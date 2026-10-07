@@ -6,12 +6,14 @@ Council Forge is an open-source, local-first agent council runtime for technical
 web development and evidence-grounded decisions. Configure the roles, model, reasoning
 effort and instance count. Keep control of the budget and the final decision.
 
-**Status: `0.1.0-alpha.1` — executable foundation, not a production product.**
-The offline demo, policy engine, MCP interface, HTML parser and tests are implemented.
-Live OpenRouter, Jev Decisions and local Codex transports are present but have not been
-validated with paid/live inference in this bootstrap. No API key or subscription token
-is included. The plugin has not been installed in the author's ChatGPT/Codex or submitted
-to the public plugin directory.
+**Status: `0.1.0-alpha.2` — native local plugin candidate.**
+The plugin is installed and discovered by Codex CLI 0.160.0 on Linux. It exposes a native
+MCP Apps Council Room, explicit role contracts, multilingual output and shared local
+concurrency/budget coordination. See [validation](docs/VALIDATION.md) for the exact
+live acceptance result and remaining gates. OpenRouter/Jev paid inference, desktop
+embedded rendering and hosted ChatGPT distribution are separate, uncompleted pilots.
+No API key or subscription token is included. No release or public directory submission
+has been made.
 
 ## Why another council?
 
@@ -22,19 +24,19 @@ fact, a failed policy check or an unresolved major objection. Accepted output is
 
 ## What is implemented
 
-| Component              | Alpha behavior                                                                                                                           |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Council protocol       | Independent proposals → skeptic → blind claim check → chairman; one bounded round                                                        |
-| Agent configuration    | Exact provider/model/effort; 1–10 instances for a proposer; separate mandatory skeptic, verifier and chair                               |
-| Billing policy         | `subscription_only`, `api_only`, `hybrid`; API calls and Jev forbidden in strict subscription-only mode                                  |
-| Jev                    | Opt-in TypeSafe Decisions API advisor; aggregate-only metadata; cannot change pinned routes or permissions                               |
-| OpenRouter             | Exact-model Chat Completions, explicit effort, no retries, no provider fallback, usage receipt                                           |
-| Generic compatible API | Configurable HTTPS endpoint; strict response checks; missing `usage.cost` produces HOLD, not a fictitious free call                      |
-| Local Codex            | Experimental stdio app-server adapter; dedicated profile, managed ChatGPT auth, account/model/effort checks, no imported API credentials |
-| State and budget       | SQLite receipts, atomic reservations, process-wide semaphore, idempotent runs, unknown-spend retention                                   |
-| Technical SEO          | Offline source-HTML facts; no invented GSC, crawl, rendering, rich-result or causality claims                                            |
-| Interfaces             | CLI, six MCP tools, local **offline planning console**                                                                                   |
-| Plugin package         | Portable manifest, Codex compatibility manifest, skill and repository marketplace metadata                                               |
+| Component              | Alpha behavior                                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Council protocol       | Independent proposals → skeptic → blind claim check → chairman; one bounded round                                                             |
+| Agent configuration    | Exact provider/model/effort; 1–10 instances for a proposer; separate mandatory skeptic, verifier and chair                                    |
+| Billing policy         | `subscription_only`, `api_only`, `hybrid`; API calls and Jev forbidden in strict subscription-only mode                                       |
+| Jev                    | Opt-in TypeSafe Decisions API advisor; aggregate-only metadata; cannot change pinned routes or permissions                                    |
+| OpenRouter             | Exact-model Chat Completions, explicit effort, no retries, no provider fallback, usage receipt                                                |
+| Generic compatible API | Configurable HTTPS endpoint; strict response checks; missing `usage.cost` produces HOLD, not a fictitious free call                           |
+| Local Codex            | Official stdio app-server; existing managed ChatGPT auth, invocation-only integration isolation, exact model/effort and read-only attestation |
+| State and budget       | SQLite receipts, atomic local/global reservations, one user-wide three-slot coordinator, idempotent runs and unknown-spend retention          |
+| Technical SEO          | Source-HTML facts and bounded typed observation imports; no invented GSC, rendering, SERP or causality claims                                 |
+| Interfaces             | CLI, ten MCP tools, native MCP Apps Council Room and separate local offline planning console                                                  |
+| Plugin package         | Portable and Codex manifests, thirteen role skills plus generic workflow, local marketplace and installed-host receipts                       |
 
 ## Run the zero-cost demo
 
@@ -65,13 +67,17 @@ Copy `examples/operator.config.json` to an ignored `*.local.json`, replace only 
 providers you intend to use, and refer to it through `COUNCIL_CONFIG`. Keep API secrets
 in the runtime environment. **Never paste a key into a council request or commit it.**
 Live inference needs both operator `liveEnabled: true` and the environment switch
-`COUNCIL_LIVE_ENABLED=true`. API routing additionally requires positive, explicit
+`COUNCIL_LIVE_ENABLED=true` for direct CLI/MCP. Portable plugin hosts use an exact-config
+admission file in their native plugin data directory; see [Plugin setup](docs/PLUGIN.md).
+API routing additionally requires positive, explicit
 operator and per-run budgets. Both are zero by default. Enabling GitHub permissions
 does not enable provider spending.
 
 ```sh
 node dist/cli.js models
+node dist/cli.js contracts
 node dist/cli.js plan examples/demo.request.json
+node dist/cli.js demo --language ja
 node dist/cli.js catalogue-openrouter
 node dist/cli.js inspect-html examples/page.html https://example.test/services/
 ```
@@ -89,7 +95,14 @@ The stdio MCP transport is local. ChatGPT web/public distribution needs an authe
 remote HTTPS service and review; those are not deployed in this alpha.
 
 MCP tools: `council_models`, `council_plan`, `council_run`, `council_status`,
-`council_cancel`, `council_inspect_html`.
+`council_cancel`, `council_inspect_html`, `council_room`, `council_configuration`,
+`council_preset`, `council_import_observations`. Roles and capability limits are documented
+in [role contracts](docs/ROLE-CONTRACTS.md). All research presets retain the three review roles.
+
+Public documentation and UI labels are English. `outputLanguage` is a validated BCP 47
+tag inherited from operator settings or supplied per request; CLI `--language` overrides
+it explicitly. Prompts, native UI requests, decisions, evidence artifacts and receipts
+carry the selection. JSON field names and decision enums remain stable across languages.
 
 ## Architecture and boundaries
 

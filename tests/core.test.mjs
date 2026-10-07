@@ -9,7 +9,11 @@ import { MockProvider } from '../dist/adapters/mock.js';
 import { verifierPrompt } from '../dist/prompts.js';
 import { inspectHtml } from '../dist/seo.js';
 const clone = (x) => structuredClone(x);
-const request = () => demoRequest('test-run');
+const request = () => {
+  const r = demoRequest('test-run');
+  r.agents = r.agents.map((a) => ({ ...a, effort: 'high' }));
+  return r;
+};
 const live = () =>
   SettingsSchema.parse({
     ...demoSettings,

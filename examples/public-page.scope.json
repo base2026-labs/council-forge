@@ -1,0 +1,10 @@
+{
+  "collector": "public-source",
+  "permission": "read",
+  "resources": ["https://example.com/"],
+  "maxObservations": 1,
+  "maxRequests": 1,
+  "maxBytes": 8192,
+  "maxRedirects": 0,
+  "timeoutMs": 10000
+}

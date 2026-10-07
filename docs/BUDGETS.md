@@ -6,11 +6,11 @@ misleading “free tokens” figure.
 
 External budgets use integer micro-USD internally. Before each API request, SQLite
 atomically checks the per-run admission ceiling and the operator lifetime ceiling for
-this database. Reservation estimates use dated operator price metadata, a conservative
+the result database and the shared user-wide ledger. Reservation estimates use dated operator price metadata, a conservative
 text-size estimate, output limit and a safety margin. Jev uses a separately configured
 per-call reservation. **These estimates are not a provider-enforced invoice cap.**
 
-The current implementation is a single local runtime, not a distributed billing system.
+The current implementation coordinates local processes under one user, not distributed hosts or tenants.
 Use a dedicated provider key with a provider-side spend limit for live pilots. Do not
 promise zero overshoot from client-side cancellation or a text-based token estimate.
 The operator's database ceiling is lifetime-scoped; it does not reset daily or monthly.
@@ -32,6 +32,8 @@ subscription use is nonzero or unknown. A budget error never escalates to a more
 model. A missing fact never becomes “try Astra and hope.”
 
 Default operator limits: live off, external API allowance zero, maximum concurrent calls
-three across the entire runtime, total agents sixteen including reviewer and chairman.
+three across the user's live runtimes, total agents sixteen including reviewer and chairman.
 A larger council queues calls; ten instances do not mean ten simultaneous processes.
-No global limit is enforced across separate state directories/hosts in this alpha.
+Separate result directories share the same global coordinator. Separate hosts/users do not.
+Subscription usage remains null when the native host supplies no normalized receipt;
+a dispatched incomplete turn is uncertain even when external API exposure is zero.

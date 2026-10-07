@@ -4,9 +4,36 @@ import { tmpdir } from 'node:os';
 import { join, isAbsolute } from 'node:path';
 import { z } from 'zod';
 import type { ProviderSettings } from '../schema.ts';
-import { OpinionSchema, VerificationSchema, ChairSchema } from '../schema.ts';
+import {
+  OpinionSchema,
+  VerificationSchema,
+  ChairSchema,
+  ObjectionSchema,
+  Identifier,
+} from '../schema.ts';
 import type { Invocation, Completion, Provider } from '../provider.ts';
 import { CouncilError, fail } from '../policy.ts';
+export const ISOLATION_CONFIG = {
+  mcp_servers: {},
+  plugins: {},
+  hooks: {},
+  apps: {},
+  'features.apps': false,
+  'features.plugins': false,
+  'features.hooks': false,
+  'features.shell_tool': false,
+  'features.unified_exec': false,
+  'features.multi_agent': false,
+  'features.computer_use': false,
+  'features.browser_use': false,
+  'features.browser_use_external': false,
+  'features.in_app_browser': false,
+  'features.image_generation': false,
+  'features.artifact': false,
+  'features.unbounded_connection_retries': false,
+  web_search: 'disabled',
+  service_tier: 'default',
+};
 export interface Rpc {
   request(method: string, params: unknown): Promise<unknown>;
   onEvent(fn: (method: string, params: unknown) => void): () => void;
@@ -17,7 +44,7 @@ export class StdioRpc implements Rpc {
   private sequence = 0;
   private pending = new Map<
     number,
-    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+    { resolve: (v: unknown) => void; reject: (e: Error) => void; method: string }
   >();
   private listeners = new Set<(method: string, params: unknown) => void>();
   private closed = false;
@@ -27,16 +54,28 @@ export class StdioRpc implements Rpc {
     home: string,
     cwd: string,
     private signal: AbortSignal,
+    disabledIntegrations: Record<string, false> = {},
   ) {
     const env: NodeJS.ProcessEnv = { CODEX_HOME: home };
     for (const key of ['PATH', 'HOME', 'USERPROFILE', 'SYSTEMROOT', 'TMPDIR', 'TEMP', 'LANG'])
       if (process.env[key]) env[key] = process.env[key];
-    this.child = spawn(executable, ['app-server', '--listen', 'stdio://'], {
-      cwd,
-      env,
-      stdio: 'pipe',
-      shell: false,
-    });
+    this.child = spawn(
+      executable,
+      [
+        'app-server',
+        '--listen',
+        'stdio://',
+        ...Object.entries({ ...ISOLATION_CONFIG, ...disabledIntegrations }).flatMap(
+          ([key, value]) => ['-c', `${key}=${JSON.stringify(value)}`],
+        ),
+      ],
+      {
+        cwd,
+        env,
+        stdio: 'pipe',
+        shell: false,
+      },
+    );
     this.abort = () => this.close();
     signal.addEventListener('abort', this.abort, { once: true });
     let buffer = '';
@@ -77,7 +116,9 @@ export class StdioRpc implements Rpc {
             this.pending.delete(message.id);
             if (message.error)
               p?.reject(
-                new CouncilError('CODEX_RPC_ERROR', 'Codex RPC failed; provider details omitted.'),
+                new CouncilError('CODEX_RPC_ERROR', 'Codex RPC failed; provider details omitted.', {
+                  method: p?.method,
+                }),
               );
             else p?.resolve(message.result);
           } else if (message.method)
@@ -99,7 +140,7 @@ export class StdioRpc implements Rpc {
       return Promise.reject(new CouncilError('CODEX_CLOSED', 'Codex connection is closed.'));
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      this.pending.set(id, { resolve, reject, method });
       this.child.stdin.write(JSON.stringify({ method, id, params }) + '\n');
     });
   }
@@ -144,37 +185,129 @@ export function assertSubscriptionAccount(raw: unknown) {
       'A managed ChatGPT account with the OpenAI provider is required. API-key and external-token sessions are refused.',
     );
 }
+export function safeTurnError(raw: unknown): unknown {
+  const codes = new Set([
+    'contextWindowExceeded',
+    'sessionBudgetExceeded',
+    'usageLimitExceeded',
+    'rateLimitExceeded',
+    'flexUnavailable',
+    'serverOverloaded',
+    'cyberPolicy',
+    'misalignmentPolicyViolation',
+    'tooManyDenials',
+    'internalServerError',
+    'unauthorized',
+    'badRequest',
+    'threadRollbackFailed',
+    'sandboxError',
+    'other',
+  ]);
+  if (typeof raw === 'string') return codes.has(raw) ? raw : null;
+  if (!raw || typeof raw !== 'object') return null;
+  for (const code of [
+    'httpConnectionFailed',
+    'responseStreamConnectionFailed',
+    'responseStreamDisconnected',
+    'responseTooManyFailedAttempts',
+    'activeTurnNotSteerable',
+  ]) {
+    const value = (raw as Record<string, unknown>)[code];
+    if (value && typeof value === 'object') {
+      const status = (value as Record<string, unknown>).httpStatusCode;
+      return {
+        code,
+        httpStatusCode:
+          typeof status === 'number' && Number.isInteger(status) && status >= 100 && status <= 599
+            ? status
+            : null,
+      };
+    }
+  }
+  return null;
+}
+export function nativeOutputSchema(phase: Invocation['phase']) {
+  // Structured Outputs requires every property to be required. Optional IDs are nullable.
+  const opinion = OpinionSchema.extend({
+    objections: z.array(ObjectionSchema.extend({ claimId: Identifier.nullable() })).max(20),
+  });
+  return z.toJSONSchema(
+    phase === 'verify' ? VerificationSchema : phase === 'chair' ? ChairSchema : opinion,
+  );
+}
 export class CodexLocalProvider implements Provider {
   constructor(private config: ProviderSettings) {}
   async complete(input: Invocation): Promise<Completion> {
     if (!this.config.codexHome || !isAbsolute(this.config.codexHome))
       return fail(
         'ISOLATED_CODEX_HOME_REQUIRED',
-        'Configure a dedicated, user-authenticated CODEX_HOME with no plugins, MCP servers or hooks. Never copy auth files.',
+        'Configure an existing user-authenticated CODEX_HOME. Invocation-only isolation disables inherited integrations; never copy auth files.',
       );
     const home = await realpath(this.config.codexHome),
       cwd = await mkdtemp(join(tmpdir(), 'council-forge-'));
-    const rpc = new StdioRpc(this.config.codexExecutable ?? 'codex', home, cwd, input.signal);
+    let rpc = new StdioRpc(this.config.codexExecutable ?? 'codex', home, cwd, input.signal);
+    let disabledIntegrations: Record<string, false> = {};
+    let inferenceDispatched = false;
+    let turnAccepted = false;
+    let threadAttestation: unknown = null;
     try {
       input.signal.throwIfAborted();
-      await rpc.request('initialize', {
-        clientInfo: {
-          name: 'council_forge',
-          title: 'Council Forge local OSS',
-          version: '0.1.0-alpha.1',
-        },
-      });
-      rpc.notify('initialized', {});
-      assertSubscriptionAccount(await rpc.request('account/read', { refreshToken: false }));
-      const config = z
-        .object({ config: z.record(z.string(), z.unknown()) })
-        .parse(await rpc.request('config/read', { includeLayers: false })).config;
-      for (const key of ['mcp_servers', 'plugins', 'hooks', 'apps'])
-        if (config[key] && Object.keys(Object(config[key])).length)
+      const initialize = async () => {
+        await rpc.request('initialize', {
+          clientInfo: {
+            name: 'council_forge',
+            title: 'Council Forge local OSS',
+            version: '0.1.0-alpha.2',
+          },
+        });
+        rpc.notify('initialized', {});
+        assertSubscriptionAccount(await rpc.request('account/read', { refreshToken: false }));
+        return z
+          .object({ config: z.record(z.string(), z.unknown()) })
+          .parse(await rpc.request('config/read', { includeLayers: false })).config;
+      };
+      let config = await initialize();
+      const configuredMcp = Object.keys(Object(config.mcp_servers ?? {}));
+      if (configuredMcp.length) {
+        if (configuredMcp.some((name) => !/^[a-zA-Z0-9_-]+$/.test(name)))
           fail(
             'UNSAFE_HOST_CONFIG',
-            'Dedicated Codex profile must not contain apps, MCP servers, plugins or hooks.',
+            'An integration name cannot be safely disabled with supported config overrides.',
           );
+        disabledIntegrations = Object.fromEntries(
+          configuredMcp.map((name) => [`mcp_servers.${name}.enabled`, false]),
+        );
+        rpc.close();
+        rpc = new StdioRpc(
+          this.config.codexExecutable ?? 'codex',
+          home,
+          cwd,
+          input.signal,
+          disabledIntegrations,
+        );
+        config = await initialize();
+      }
+      const effectiveMcp = Object.values(Object(config.mcp_servers ?? {})) as {
+        enabled?: boolean;
+      }[];
+      if (effectiveMcp.some((server) => server.enabled !== false))
+        fail(
+          'UNSAFE_HOST_CONFIG',
+          'Invocation-only isolation did not disable every inherited MCP server.',
+        );
+      const features = config.features as Record<string, unknown> | undefined;
+      for (const [key, value] of Object.entries(ISOLATION_CONFIG)) {
+        if (key.startsWith('features.') && features?.[key.slice(9)] !== value)
+          fail(
+            'HOST_ISOLATION_UNVERIFIED',
+            'Effective host configuration did not attest a required disabled feature.',
+          );
+      }
+      if (config.web_search !== 'disabled')
+        fail(
+          'HOST_ISOLATION_UNVERIFIED',
+          'Web search was not disabled by the isolated invocation.',
+        );
       const models: z.infer<typeof Models>['data'] = [];
       let cursor: string | null = null;
       const cursors = new Set<string>();
@@ -203,15 +336,21 @@ export class CodexLocalProvider implements Provider {
           thread: z.object({ id: z.string(), modelProvider: z.string().optional() }),
           model: z.string().optional(),
           modelProvider: z.string().optional(),
+          reasoningEffort: z.string().nullable().optional(),
+          approvalPolicy: z.string().optional(),
+          sandbox: z.object({ type: z.string(), networkAccess: z.boolean().optional() }).optional(),
+          serviceTier: z.string().nullable().optional(),
         })
         .parse(
           await rpc.request('thread/start', {
             model: input.agent.model,
             modelProvider: 'openai',
             cwd,
-            sandbox: 'readOnly',
+            sandbox: 'read-only',
             approvalPolicy: 'never',
             ephemeral: true,
+            serviceTier: 'default',
+            config: { ...ISOLATION_CONFIG, model_reasoning_effort: input.agent.effort },
           }),
         );
       const actual = started.model;
@@ -219,6 +358,22 @@ export class CodexLocalProvider implements Provider {
         fail('MODEL_NOT_ATTESTED', 'App-server did not attest the selected model in thread/start.');
       if ((started.modelProvider ?? started.thread.modelProvider) !== 'openai')
         fail('PROVIDER_MISMATCH', 'The current thread is not using the expected provider.');
+      if (started.reasoningEffort !== input.agent.effort)
+        fail(
+          'EFFORT_NOT_ATTESTED',
+          'App-server did not attest the exact requested reasoning effort.',
+        );
+      if (
+        started.approvalPolicy !== 'never' ||
+        started.sandbox?.type !== 'readOnly' ||
+        started.sandbox.networkAccess === true
+      )
+        fail(
+          'CAPABILITY_NOT_ATTESTED',
+          'App-server did not attest read-only permissions with no sandbox network.',
+        );
+      if (started.serviceTier !== 'default' && started.serviceTier !== null)
+        fail('SERVICE_TIER_MISMATCH', 'Ordinary service tier was not attested.');
       const apps = z
         .object({ apps: z.array(z.object({ callable: z.boolean() })) })
         .parse(
@@ -230,11 +385,40 @@ export class CodexLocalProvider implements Provider {
           'Callable connectors are not allowed in the local alpha adapter.',
         );
       const mcp = z
-        .object({ data: z.array(z.unknown()), nextCursor: z.string().nullable().optional() })
-        .parse(await rpc.request('mcpServerStatus/list', { limit: 1 }));
-      if (mcp.data.length || mcp.nextCursor)
+        .object({
+          data: z.array(
+            z.object({
+              tools: z.record(z.string(), z.unknown()).default({}),
+              resources: z.array(z.unknown()).default([]),
+              resourceTemplates: z.array(z.unknown()).default([]),
+            }),
+          ),
+          nextCursor: z.string().nullable().optional(),
+        })
+        .parse(await rpc.request('mcpServerStatus/list', { limit: 100 }));
+      if (
+        mcp.data.some(
+          (server) =>
+            Object.keys(server.tools).length ||
+            server.resources.length ||
+            server.resourceTemplates.length,
+        ) ||
+        mcp.nextCursor
+      )
         fail('HOST_TOOLS_ENABLED', 'MCP integrations must be disabled in this dedicated profile.');
       assertSubscriptionAccount(await rpc.request('account/read', { refreshToken: false }));
+      threadAttestation = {
+        threadId: started.thread.id,
+        model: actual,
+        effort: started.reasoningEffort,
+        approvalPolicy: started.approvalPolicy,
+        sandbox: started.sandbox,
+        serviceTier: started.serviceTier,
+        callableApps: 0,
+        callableMcpTools: 0,
+        hostIsolation: ISOLATION_CONFIG,
+        disabledIntegrations,
+      };
       let text = '';
       let stop = () => {};
       const completed = new Promise<void>((resolve, reject) => {
@@ -288,33 +472,38 @@ export class CodexLocalProvider implements Provider {
             }
           }
           if (method === 'turn/completed') {
-            const turn = p.turn as { status?: string } | undefined;
+            const turn = p.turn as
+              | { status?: string; error?: { codexErrorInfo?: unknown } }
+              | undefined;
             if (turn?.status === 'completed') resolve();
-            else reject(new CouncilError('CODEX_INCOMPLETE', 'Codex did not complete the turn.'));
+            else
+              reject(
+                new CouncilError('CODEX_INCOMPLETE', 'Codex did not complete the turn.', {
+                  turnStatus: turn?.status ?? null,
+                  codexErrorInfo: safeTurnError(turn?.error?.codexErrorInfo),
+                }),
+              );
           }
         });
       });
       // Attach immediately so an early stream error cannot become an unhandled rejection.
       void completed.catch(() => undefined);
-      const schema =
-        input.phase === 'verify'
-          ? VerificationSchema
-          : input.phase === 'chair'
-            ? ChairSchema
-            : OpinionSchema;
       try {
+        inferenceDispatched = true;
         await rpc.request('turn/start', {
           threadId: started.thread.id,
           input: [{ type: 'text', text: input.prompt }],
           model: input.agent.model,
           ...(input.agent.effort ? { effort: input.agent.effort } : {}),
           approvalPolicy: 'never',
+          serviceTierForTurn: 'default',
           sandboxPolicy: {
             type: 'readOnly',
-            access: { type: 'restricted', includePlatformDefaults: true, readableRoots: [cwd] },
+            networkAccess: false,
           },
-          outputSchema: z.toJSONSchema(schema),
+          outputSchema: nativeOutputSchema(input.phase),
         });
+        turnAccepted = true;
         await completed;
       } finally {
         stop();
@@ -324,8 +513,30 @@ export class CodexLocalProvider implements Provider {
         text,
         actualModel: actual!,
         requestId: started.thread.id,
+        actualEffort: started.reasoningEffort,
+        capabilityReceipt: {
+          permissionScope: 'read_only',
+          configuredHostIsolation: ISOLATION_CONFIG,
+          disabledIntegrations,
+          sandbox: started.sandbox,
+          callableApps: 0,
+          callableMcpTools: 0,
+          modelTools: [],
+          limitation:
+            'Invocation-only feature flags and host sandbox are attested; semantic evidence checks remain fallible.',
+        },
         usage: { inputTokens: null, outputTokens: null, costUsd: null },
       };
+    } catch (error) {
+      if (error instanceof CouncilError)
+        error.diagnostic = {
+          ...error.diagnostic,
+          inferenceDispatched,
+          turnAccepted,
+          threadAttestation,
+          resultKnown: !inferenceDispatched,
+        };
+      throw error;
     } finally {
       rpc.close();
       await rm(cwd, { recursive: true, force: true });

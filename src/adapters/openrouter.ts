@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ProviderSettings, ModelSettings } from '../schema.ts';
+import type { ProviderSettings } from '../schema.ts';
 import type { Invocation, Completion, Provider } from '../provider.ts';
 import { fail } from '../policy.ts';
 import { envSecret, httpsEndpoint, jsonFetch } from './http.ts';

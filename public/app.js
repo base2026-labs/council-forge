@@ -3,7 +3,7 @@ let config, request;
 const el = (id) => document.getElementById(id);
 function render() {
   el('agents').replaceChildren();
-  request.agents.forEach((agent, index) => {
+  request.agents.forEach((agent) => {
     const row = document.createElement('div');
     row.className = 'agent';
     const name = document.createElement('div');
@@ -23,7 +23,6 @@ function render() {
     );
     models.onchange = () => {
       [agent.providerId, agent.model] = JSON.parse(models.value);
-      delete agent.effort;
       render();
     };
     row.append(models);
@@ -68,6 +67,7 @@ function updateCount() {
 }
 async function submit(path) {
   request.task = el('task').value;
+  request.outputLanguage = el('language').value;
   request.mode = el('mode').value;
   request.apiBudgetUsd = Number(el('budget').value);
   request.runId = 'ui-' + crypto.randomUUID();
@@ -105,6 +105,7 @@ async function init() {
   config = await (await fetch('/api/config')).json();
   request = config.request;
   el('task').value = request.task;
+  el('language').value = config.outputLanguage ?? 'en';
   render();
   el('plan').onclick = () => submit('/api/plan');
   el('demo').onclick = () => submit('/api/demo');

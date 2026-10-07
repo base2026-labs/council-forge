@@ -8,11 +8,14 @@ export interface Invocation {
   signal: AbortSignal;
   evidence: Evidence[];
   claims: Claim[];
+  outputLanguage?: string;
 }
 export interface Completion {
   text: string;
   actualModel: string;
   requestId: string | null;
+  actualEffort?: string | null;
+  capabilityReceipt?: unknown;
   usage: { inputTokens: number | null; outputTokens: number | null; costUsd: number | null };
 }
 export interface Provider {

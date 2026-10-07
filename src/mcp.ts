@@ -1,14 +1,23 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { RequestSchema, Identifier } from './schema.ts';
+import { RequestSchema, Identifier, AgentSchema, EvidenceSchema } from './schema.ts';
 import { preflight, CouncilError } from './policy.ts';
 import { openRuntime, catalogue } from './runtime.ts';
 import { inspectHtml } from './seo.ts';
+import { ROOM_URI, roomHtml } from './room.ts';
+import { createPreset, presetContracts, PresetName } from './presets.ts';
+import { contracts } from './roles.ts';
+import { councilCapabilities } from './capabilities.ts';
+import { ObservationScope, importObservations, collectorContracts } from './collectors.ts';
 const runtime = openRuntime();
-const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.1' });
+const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.2' });
 const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value) }],
+  structuredContent:
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : { data: value },
 });
 const safe = async (fn: () => unknown | Promise<unknown>) => {
   try {
@@ -23,6 +32,17 @@ const safe = async (fn: () => unknown | Promise<unknown>) => {
     };
   }
 };
+const configuration = () => ({
+  catalogue: catalogue(runtime.settings),
+  presets: presetContracts(),
+  roles: contracts(),
+  allowedModes: runtime.settings.allowedModes,
+  liveEnabled: runtime.settings.liveEnabled,
+  maxApiBudgetUsd: runtime.settings.maxRunApiUsd,
+  outputLanguage: runtime.settings.outputLanguage,
+  capabilities: councilCapabilities(),
+  collectors: collectorContracts(),
+});
 server.registerTool(
   'council_models',
   {
@@ -52,8 +72,68 @@ server.registerTool(
         maxConcurrency: p.maxConcurrency,
         requestHash: p.requestHash,
         warnings: p.warnings,
+        outputLanguage: p.request.outputLanguage,
+        permissionScope: p.request.permissionScope,
       };
     }),
+);
+server.registerResource(
+  'council-room',
+  ROOM_URI,
+  { mimeType: 'text/html;profile=mcp-app' },
+  async () => ({
+    contents: [
+      {
+        uri: ROOM_URI,
+        mimeType: 'text/html;profile=mcp-app',
+        text: roomHtml(),
+        _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } },
+      },
+    ],
+  }),
+);
+server.registerTool(
+  'council_room',
+  {
+    description:
+      'Open the native Council Room. Configure exact per-role models, effort, counts, billing boundaries, output language and evidence. Live admission remains operator-controlled.',
+    inputSchema: {},
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    _meta: { ui: { resourceUri: ROOM_URI } },
+  },
+  async () => text(configuration()),
+);
+server.registerTool(
+  'council_configuration',
+  {
+    description:
+      'Read Council Room configuration without rendering another UI component. No credentials or operator paths.',
+    inputSchema: {},
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async () => text(configuration()),
+);
+server.registerTool(
+  'council_preset',
+  {
+    description:
+      'Construct a preset from explicit per-role selections. Keeps skeptic/verifier/chair and chosen pins. No default models or permission expansion.',
+    inputSchema: { preset: PresetName, selections: z.array(AgentSchema).max(32) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async ({ preset, selections }) =>
+    safe(() => ({ agents: createPreset(preset, selections), permissionScope: 'read_only' })),
+);
+server.registerTool(
+  'council_import_observations',
+  {
+    description:
+      'Validate supplied observations against exact read scope and byte/count bounds. Does not fetch sources or inherit user plugins; provenance remains caller-reported.',
+    inputSchema: { scope: ObservationScope, observations: z.array(EvidenceSchema).max(100) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async ({ scope, observations }) =>
+    safe(() => ({ evidence: importObservations(scope, observations) })),
 );
 server.registerTool(
   'council_run',

@@ -6,13 +6,35 @@ import { Store } from './store.ts';
 import { createEngine, loadSettings, openRuntime, catalogue } from './runtime.ts';
 import { discoverOpenRouter } from './adapters/openrouter.ts';
 import { inspectHtml } from './seo.ts';
+import { Language } from './schema.ts';
+import { contracts } from './roles.ts';
+import { presetContracts } from './presets.ts';
+import { collectPublicPages, PublicPageScope } from './public-pages.ts';
+import { openGlobalCoordinator } from './global.ts';
 const print = (v: unknown) => console.log(JSON.stringify(v, null, 2));
 async function main() {
-  const [command, path, url] = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+  const flag = argv.indexOf('--language');
+  const outputLanguage = flag >= 0 ? Language.parse(argv[flag + 1]) : undefined;
+  if (flag >= 0) argv.splice(flag, 2);
+  const [command, path, url] = argv;
+  const requestFile = () => ({
+    ...JSON.parse(readFileSync(path!, 'utf8')),
+    ...(outputLanguage ? { outputLanguage } : {}),
+  });
+  if (command === 'contracts') {
+    print({ roles: contracts(), presets: presetContracts() });
+    return;
+  }
   if (command === 'demo') {
     const store = new Store();
     try {
-      print(await createEngine(demoSettings, store).run(demoRequest('demo-' + randomUUID())));
+      print(
+        await createEngine(demoSettings, store).run({
+          ...demoRequest('demo-' + randomUUID()),
+          ...(outputLanguage ? { outputLanguage } : {}),
+        }),
+      );
     } finally {
       store.close();
     }
@@ -30,8 +52,25 @@ async function main() {
     print(inspectHtml(readFileSync(path, 'utf8'), url));
     return;
   }
+  if (command === 'collect-public' && path) {
+    const scope = PublicPageScope.parse(JSON.parse(readFileSync(path, 'utf8')));
+    const global = openGlobalCoordinator();
+    try {
+      print(
+        await collectPublicPages(
+          scope,
+          scope.resources,
+          global,
+          AbortSignal.timeout(scope.maxRequests * scope.timeoutMs),
+        ),
+      );
+    } finally {
+      global.close();
+    }
+    return;
+  }
   if (command === 'plan' && path) {
-    const p = preflight(loadSettings(), JSON.parse(readFileSync(path, 'utf8')));
+    const p = preflight(loadSettings(), requestFile());
     print({
       status: p.status,
       simulation: p.simulation,
@@ -40,13 +79,15 @@ async function main() {
       plannedCalls: p.plannedCalls,
       requestHash: p.requestHash,
       warnings: p.warnings,
+      outputLanguage: p.request.outputLanguage,
+      permissionScope: p.request.permissionScope,
     });
     return;
   }
   if (command === 'run' && path) {
     const runtime = openRuntime();
     try {
-      print(await runtime.engine.run(JSON.parse(readFileSync(path, 'utf8'))));
+      print(await runtime.engine.run(requestFile()));
     } finally {
       runtime.close();
     }
@@ -56,10 +97,13 @@ async function main() {
     usage: [
       'demo',
       'models',
+      'contracts',
+      '--language <BCP47-tag> (optional explicit output language override)',
       'catalogue-openrouter (public metadata GET, no inference)',
       'plan <request.json>',
       'run <request.json> (live inference requires two operator gates)',
       'inspect-html <file.html> <source-url>',
+      'collect-public <operator-scope.json> (bounded public HTTPS source GETs, no inference)',
     ],
     status: 'alpha; no live integrations are enabled by default',
   });

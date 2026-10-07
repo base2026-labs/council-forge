@@ -2,11 +2,11 @@ import {
   OpinionSchema,
   VerificationSchema,
   ChairSchema,
-  type CouncilRequest,
   type Agent,
   type Claim,
   type Settings,
   type Verification,
+  type Evidence,
 } from './schema.ts';
 import {
   CouncilError,
@@ -16,11 +16,14 @@ import {
   reserveEstimate,
   usdToMicro,
   fail,
-  hash,
 } from './policy.ts';
 import { Store } from './store.ts';
 import type { Provider, Invocation, Completion } from './provider.ts';
 import { proposerPrompt, critiquePrompt, verifierPrompt, chairPrompt } from './prompts.ts';
+import { councilCapabilities } from './capabilities.ts';
+import { ROLE_CONTRACTS } from './roles.ts';
+import type { GlobalCoordinator } from './global.ts';
+import { createHash } from 'node:crypto';
 export interface JevAdvice {
   choice: string;
   confidence: number;
@@ -31,7 +34,12 @@ export interface JevAdvice {
 export interface Router {
   advise(metrics: Record<string, number | string>, signal: AbortSignal): Promise<JevAdvice>;
 }
-export function evaluateClaims(claims: Claim[], verification: Verification, evidenceIds: string[]) {
+export function evaluateClaims(
+  claims: Claim[],
+  verification: Verification,
+  evidenceIds: string[],
+  evidence?: Evidence[],
+) {
   const known = new Set(evidenceIds),
     claimIds = new Set(claims.map((c) => c.id));
   const blockers: string[] = [];
@@ -49,7 +57,11 @@ export function evaluateClaims(claims: Claim[], verification: Verification, evid
       claim.evidenceIds.every((id) => known.has(id)) &&
       check?.verdict === 'supported' &&
       check.evidenceIds.length > 0 &&
-      check.evidenceIds.every((id) => known.has(id));
+      check.evidenceIds.every((id) => known.has(id)) &&
+      (!evidence ||
+        check.evidenceIds.some((id) =>
+          evidence.some((e) => e.id === id && e.kind !== 'hypothesis'),
+        ));
     if (valid) supported++;
     else
       blockers.push(
@@ -71,6 +83,7 @@ export class CouncilEngine {
     public readonly store: Store,
     private providers: Map<string, Provider>,
     private router?: Router,
+    private global?: GlobalCoordinator,
   ) {
     this.semaphore = new Semaphore(settings.maxConcurrency);
   }
@@ -82,10 +95,35 @@ export class CouncilEngine {
   async run(raw: unknown): Promise<unknown> {
     const p = preflight(this.settings, raw),
       r = p.request;
+    const context = {
+      outputLanguage: r.outputLanguage,
+      permissionScope: r.permissionScope,
+      capabilities: councilCapabilities(),
+      modelSelections: r.agents,
+      concurrency: {
+        limit: this.settings.maxConcurrency,
+        scope: this.global?.path ?? 'in-process simulation',
+        sharedAcrossRuns: Boolean(this.global),
+      },
+      evidence: r.evidence.map((e) => ({
+        ...e,
+        sha256: createHash('sha256').update(e.excerpt, 'utf8').digest('hex'),
+        provenance: e.provenance ?? {
+          collector: 'caller-supplied',
+          scope: e.source,
+          permission: 'read',
+          sourceReported: true,
+          limitations: [
+            'Caller-supplied evidence was not independently collected by this runtime.',
+          ],
+        },
+      })),
+    };
     if (p.missingEvidence)
       return {
         runId: r.runId,
         state: 'needs_input',
+        ...context,
         reason:
           'Attach observations or a source document before deliberation. No inference was dispatched.',
       };
@@ -102,13 +140,17 @@ export class CouncilEngine {
     );
     const receipts: unknown[] = [];
     const signal = controller.signal;
+    const use = <T>(fn: () => Promise<T>) =>
+      this.semaphore.use(signal, () =>
+        this.global ? this.global.use(this.settings.maxConcurrency, signal, fn) : fn(),
+      );
     const call = async (
       agent: Agent,
       phase: Invocation['phase'],
       prompt: string,
       claims: Claim[] = [],
     ): Promise<string> =>
-      this.semaphore.use(signal, async () => {
+      use(async () => {
         const { provider, model } = selectModel(this.settings, agent);
         const adapter = this.providers.get(provider.id);
         if (!adapter) return fail('ADAPTER_MISSING', 'No runtime adapter is registered.');
@@ -116,14 +158,33 @@ export class CouncilEngine {
         const callId = `${r.runId}/${phase}/${agent.id}`;
         if (Buffer.byteLength(prompt) > 512000)
           fail('PROMPT_TOO_LARGE', 'Expanded deliberation context exceeds the alpha limit.');
-        if (paid)
-          this.store.reserve(
+        if (paid) {
+          const estimate = reserveEstimate(
+            model,
+            prompt,
+            r.maxOutputTokens,
+            this.settings.maxPriceAgeHours,
+          );
+          this.global?.budget.reserve(
             callId,
             r.runId,
-            reserveEstimate(model, prompt, r.maxOutputTokens, this.settings.maxPriceAgeHours),
+            estimate,
             usdToMicro(r.apiBudgetUsd),
             usdToMicro(this.settings.apiLifetimeLimitUsd),
           );
+          try {
+            this.store.reserve(
+              callId,
+              r.runId,
+              reserveEstimate(model, prompt, r.maxOutputTokens, this.settings.maxPriceAgeHours),
+              usdToMicro(r.apiBudgetUsd),
+              usdToMicro(this.settings.apiLifetimeLimitUsd),
+            );
+          } catch (error) {
+            this.global?.budget.settle(callId, 0);
+            throw error;
+          }
+        }
         this.store.event(r.runId, 'agent_started', {
           agent: agent.id,
           phase,
@@ -141,16 +202,33 @@ export class CouncilEngine {
             signal,
             evidence: r.evidence,
             claims,
+            outputLanguage: r.outputLanguage,
           });
         } catch (error) {
-          if (paid) this.store.settle(callId, null);
+          if (paid) {
+            this.store.settle(callId, null);
+            this.global?.budget.settle(callId, null);
+          }
+          receipts.push({
+            agent: agent.id,
+            phase,
+            requestedModel: agent.model,
+            requestedEffort: agent.effort ?? null,
+            state: 'held',
+            errorCode: error instanceof CouncilError ? error.code : 'PROVIDER_OR_SCHEMA_ERROR',
+            diagnostic: error instanceof CouncilError ? (error.diagnostic ?? null) : null,
+            usage: { inputTokens: null, outputTokens: null, costUsd: null },
+          });
           throw error;
         }
-        if (paid)
-          this.store.settle(
-            callId,
-            result.usage.costUsd === null ? null : usdToMicro(result.usage.costUsd),
-          );
+        if (paid) {
+          const charged = result.usage.costUsd === null ? null : usdToMicro(result.usage.costUsd);
+          try {
+            this.store.settle(callId, charged);
+          } finally {
+            this.global?.budget.settle(callId, charged);
+          }
+        }
         const receipt = {
           agent: agent.id,
           phase,
@@ -158,6 +236,11 @@ export class CouncilEngine {
           requestedModel: agent.model,
           actualModel: result.actualModel,
           requestedEffort: agent.effort ?? null,
+          actualEffort: result.actualEffort ?? null,
+          effortReceipt: result.actualEffort
+            ? 'provider-attested'
+            : 'requested-only; actual effort unknown',
+          capabilityReceipt: result.capabilityReceipt ?? councilCapabilities(),
           requestId: result.requestId,
           billing: provider.kind === 'mock' ? 'simulation' : paid ? 'api' : 'subscription',
           usage: result.usage,
@@ -178,15 +261,27 @@ export class CouncilEngine {
       let advice: JevAdvice | null = null;
       if (r.useJev) {
         if (!this.router) fail('JEV_UNAVAILABLE', 'Jev adapter is not registered.');
-        advice = await this.semaphore.use(signal, async () => {
+        advice = await use(async () => {
           const id = `${r.runId}/jev`;
-          this.store.reserve(
+          this.global?.budget.reserve(
             id,
             r.runId,
             usdToMicro(this.settings.jev.reservationUsd),
             usdToMicro(r.apiBudgetUsd),
             usdToMicro(this.settings.apiLifetimeLimitUsd),
           );
+          try {
+            this.store.reserve(
+              id,
+              r.runId,
+              usdToMicro(this.settings.jev.reservationUsd),
+              usdToMicro(r.apiBudgetUsd),
+              usdToMicro(this.settings.apiLifetimeLimitUsd),
+            );
+          } catch (error) {
+            this.global?.budget.settle(id, 0);
+            throw error;
+          }
           let result: JevAdvice;
           try {
             result = await this.router!.advise(
@@ -200,9 +295,17 @@ export class CouncilEngine {
             );
           } catch (error) {
             this.store.settle(id, null);
+            this.global?.budget.settle(id, null);
             throw error;
           }
-          this.store.settle(id, result.costUsd === null ? null : usdToMicro(result.costUsd));
+          try {
+            this.store.settle(id, result.costUsd === null ? null : usdToMicro(result.costUsd));
+          } finally {
+            this.global?.budget.settle(
+              id,
+              result.costUsd === null ? null : usdToMicro(result.costUsd),
+            );
+          }
           if (result.costUsd === null)
             fail('USAGE_UNKNOWN', 'Jev cost is unknown. Reservation retained.');
           this.store.event(r.runId, 'jev_advice', result);
@@ -222,7 +325,20 @@ export class CouncilEngine {
       );
       const attempts = await Promise.allSettled(
         independent.map(async (a) =>
-          OpinionSchema.parse(JSON.parse(await call(a, 'propose', proposerPrompt(a, r)))),
+          OpinionSchema.parse(
+            JSON.parse(
+              await call(
+                a,
+                'propose',
+                proposerPrompt(a, {
+                  ...r,
+                  evidence: r.evidence.filter((e) =>
+                    ROLE_CONTRACTS[a.role].allowedEvidenceKinds.includes(e.kind),
+                  ),
+                }),
+              ),
+            ),
+          ),
         ),
       );
       const failed = attempts.find((a) => a.status === 'rejected');
@@ -246,6 +362,7 @@ export class CouncilEngine {
         claims,
         verification,
         r.evidence.map((e) => e.id),
+        r.evidence,
       );
       const objections = [...opinions.flatMap((o) => o.objections), ...critique.objections];
       for (const o of objections)
@@ -255,28 +372,28 @@ export class CouncilEngine {
       const packet = { task: r.task, decision, claims, verification, objections, gate };
       const chair = p.agents.find((a) => a.role === 'chair')!;
       const synthesis = ChairSchema.parse(
-        JSON.parse(await call(chair, 'chair', chairPrompt(packet), claims)),
+        JSON.parse(await call(chair, 'chair', chairPrompt(packet, r.outputLanguage), claims)),
       );
       const result = {
         runId: r.runId,
         state: 'completed',
         simulation: p.simulation,
+        ...context,
         decision,
         productionAuthorized: false,
         advice,
         gate,
         claims,
+        proposals: opinions.map((opinion, i) => ({
+          agent: independent[i]!.id,
+          role: independent[i]!.role,
+          opinion,
+        })),
+        critique,
         verification,
         objections,
         synthesis,
         receipts,
-        evidence: r.evidence.map((e) => ({
-          id: e.id,
-          source: e.source,
-          observedAt: e.observedAt,
-          kind: e.kind,
-          sha256: hash(e.excerpt),
-        })),
         apiExposureUsd: this.store.exposure(r.runId) / 1e6,
       };
       this.store.finish(r.runId, 'completed', result);
@@ -294,6 +411,7 @@ export class CouncilEngine {
         state: signal.aborted ? 'cancelled' : 'held',
         decision: 'hold',
         simulation: p.simulation,
+        ...context,
         productionAuthorized: false,
         errorCode: code,
         receipts,

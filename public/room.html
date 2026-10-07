@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Council Forge — Council Room</title>
+    <style>
+      /* COUNCIL_ROOM_CSS */
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="eyebrow">COUNCIL FORGE</span><span class="badge">READ ONLY</span>
+      </header>
+      <h1>Council Room</h1>
+      <p>Independent proposals. Skepticism. Blind claim checks. A decision with evidence.</p>
+      <p id="connection" role="status">Connecting to the native MCP host…</p>
+      <section aria-labelledby="setup-title">
+        <h2 id="setup-title">Compose your council</h2>
+        <div class="grid">
+          <label
+            >Preset<select id="preset">
+              <option value="research">Research</option>
+              <option value="seo_geo_aeo">SEO / GEO / AEO</option>
+              <option value="code_review">Code review</option>
+            </select></label
+          >
+          <label
+            >Output language<input
+              id="language"
+              value="en"
+              placeholder="en, ru, ja, ar…"
+              maxlength="35"
+          /></label>
+          <label
+            >Billing mode<select id="mode">
+              <option value="subscription_only">Subscription only</option>
+              <option value="api_only">API only</option>
+              <option value="hybrid">Hybrid</option>
+            </select></label
+          >
+          <label
+            >API limit (USD)<input id="budget" type="number" min="0" step="0.01" value="0"
+          /></label>
+        </div>
+        <label
+          >Decision to investigate<textarea
+            id="task"
+            rows="3"
+            maxlength="16000"
+            placeholder="State the question and evidence gaps."
+          ></textarea>
+        </label>
+        <div id="agents"></div>
+        <details>
+          <summary>Supplied evidence and provenance</summary>
+          <p>
+            Supply a JSON array of dated observations. No browsing, GSC or SERP access is inherited
+            from your other plugins.
+          </p>
+          <label>Evidence JSON<textarea id="evidence" rows="7">[]</textarea></label>
+        </details>
+        <p class="notice">
+          Models and reasoning effort are explicit pins. Missing evidence produces HOLD. Jev remains
+          disabled in this room; API budget and live access are enforced by the operator.
+        </p>
+        <div class="actions">
+          <button id="plan" disabled>Validate plan</button
+          ><button id="run" disabled>Convene council</button
+          ><button id="cancel" disabled>Cancel run</button>
+        </div>
+      </section>
+      <section aria-labelledby="record-title">
+        <h2 id="record-title">Decision record</h2>
+        <p id="state" aria-live="polite">No run yet.</p>
+        <div id="progress"></div>
+        <div id="recommendation" dir="auto"></div>
+        <details>
+          <summary>Evidence, objections and execution receipts</summary>
+          <pre id="receipt" dir="auto">No receipt yet.</pre>
+        </details>
+      </section>
+      <footer>
+        No production changes. Unknown token use and charges stay unknown. No automatic replay after
+        an uncertain result.
+      </footer>
+    </main>
+    <script>
+      /* COUNCIL_ROOM_JS */
+    </script>
+  </body>
+</html>
