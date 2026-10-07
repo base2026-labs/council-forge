@@ -1,0 +1,11 @@
+{
+  "name": "council-forge",
+  "version": "0.1.0-alpha.1",
+  "description": "Evidence-first local agent councils.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Council Forge",
+    "shortDescription": "Independent agents. Inspectable decisions."
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "council-forge",
+  "version": "0.1.0-alpha.1",
+  "description": "Evidence-first councils with explicit subscription/API boundaries. Local alpha; live providers require operator setup.",
+  "author": {
+    "name": "Alex Yarosh"
+  },
+  "repository": "https://github.com/offflinerpsy/council-forge",
+  "license": "MIT",
+  "keywords": ["agents", "council", "seo", "code-review", "jev"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Council Forge",
+        "shortDescription": "Independent agents. Inspectable decisions.",
+        "developerName": "Alex Yarosh",
+        "category": "Developer Tools",
+        "capabilities": ["Read"],
+        "defaultPrompt": ["Validate a technical SEO council plan without making model calls."]
+      }
+    }
+  }
+}

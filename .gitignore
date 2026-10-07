@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.council-forge/
+.env
+.env.*
+!.env.example
+*.sqlite*
+*.log
+*.local.json
+coverage/
+.DS_Store

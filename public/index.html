@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Council Forge — Planning Room</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script defer src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="wordmark" href="/">COUNCIL <strong>FORGE</strong></a
+      ><span class="badge">LOCAL ALPHA · OFFLINE CONSOLE</span>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">INDEPENDENT MINDS. INSPECTABLE DECISIONS.</p>
+        <h1>Build a council.<br />Keep the controls.</h1>
+        <p>
+          Assign models, challenge assumptions and verify the evidence. No majority vote can
+          override a missing fact.
+        </p>
+      </section>
+      <div class="workspace">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Council composition</h2>
+            <span id="count"></span>
+          </div>
+          <label for="task">Decision to investigate</label><textarea id="task" rows="3"></textarea>
+          <div class="controls">
+            <div>
+              <label for="mode">Billing boundary</label
+              ><select id="mode">
+                <option value="subscription_only">Subscription only</option>
+                <option value="api_only">External API only</option>
+                <option value="hybrid">Hybrid — explicit API allowance</option>
+              </select>
+            </div>
+            <div>
+              <label for="budget">API budget (USD)</label
+              ><input id="budget" type="number" min="0" step="0.01" value="0" />
+            </div>
+          </div>
+          <div id="agents"></div>
+          <button id="add" class="secondary">Add a researcher</button>
+          <div class="notice">
+            <strong>Jev is separate.</strong> Its decisions use the OpenRouter API. It is disabled
+            in subscription-only mode and in this offline demo. API keys never enter this interface.
+          </div>
+          <div class="actions">
+            <button id="plan">Validate plan</button
+            ><button id="demo" class="secondary">Run offline fixture</button>
+          </div>
+        </section>
+        <section class="panel result">
+          <div class="panel-title">
+            <h2>Decision record</h2>
+            <span id="state" class="badge">NOT RUN</span>
+          </div>
+          <p id="status" aria-live="polite">
+            The demo uses fixture responses, not live agents or a live website.
+          </p>
+          <div id="summary"></div>
+          <details>
+            <summary>Inspect the full receipt</summary>
+            <pre id="output">No run yet.</pre>
+          </details>
+          <div class="boundaries">
+            <h3>Hard boundaries</h3>
+            <p>
+              No silent API fallback.<br />No model or effort substitution.<br />No production
+              writes.<br />No claim that consensus proves truth.
+            </p>
+          </div>
+        </section>
+      </div>
+      <footer>
+        Open source · MIT · v0.1.0-alpha.1<br />This local planning console is not a published
+        ChatGPT widget. Live providers are configured separately in trusted server settings.
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "id": "external",
+  "kind": "openrouter",
+  "keyEnv": "OPENROUTER_API_KEY",
+  "models": [
+    {
+      "id": "replace-with-catalogue-model-id",
+      "label": "Replace with provider metadata",
+      "efforts": [],
+      "responseIds": ["replace-with-expected-response-model-id"],
+      "jsonMode": false
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@council-forge/council-forge",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-first, policy-bounded multi-model councils.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "check": "npm run typecheck && npm test",
+    "demo": "node dist/cli.js demo",
+    "plan": "node dist/cli.js plan",
+    "mcp": "node dist/mcp.js",
+    "ui": "node dist/web.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.5",
+    "parse5": "8.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "22.20.5",
+    "prettier": "3.6.2"
+  }
+}

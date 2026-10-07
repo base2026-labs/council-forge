@@ -1,0 +1,82 @@
+
+> @council-forge/council-forge@0.1.0-alpha.1 check
+> npm run typecheck && npm test
+
+
+> @council-forge/council-forge@0.1.0-alpha.1 typecheck
+> tsc --noEmit
+
+
+> @council-forge/council-forge@0.1.0-alpha.1 test
+> npm run build && node --test tests/*.test.mjs
+
+
+> @council-forge/council-forge@0.1.0-alpha.1 build
+> tsc
+
+✔ OpenRouter sends a pinned model with no provider fallback (184.399959ms)
+✔ unexpected generation truncation is not a success (42.94125ms)
+✔ HTTP errors are not retried or echoed (3.405292ms)
+✔ missing usage is not zero-cost usage (3.794125ms)
+✔ external provider redirects are forbidden (0.991875ms)
+✔ provider credentials cannot be embedded in URL (0.470459ms)
+✔ model catalogue discovery does not claim account eligibility (17.386792ms)
+✔ Jev uses Decisions API and aggregate-only state (11.456542ms)
+✔ Jev rejects added private fields before transport (1.743625ms)
+✔ Jev rejects unknown decision choices (14.672167ms)
+✔ Jev refuses a different model version (9.849958ms)
+✔ subscription adapter rejects API key authentication (1.306458ms)
+✔ subscription adapter rejects anonymous and provider-mismatched accounts (0.215583ms)
+✔ managed ChatGPT account is eligible for further preflight, not proof of entitlement (0.380292ms)
+✔ Codex stdio fixture completes with pinned model and effort (675.987167ms)
+✔ Codex stdio fixture rejects api-auth (652.067167ms)
+✔ Codex stdio fixture rejects wrong-model (458.648458ms)
+✔ Codex stdio fixture rejects tools-enabled (443.236542ms)
+✔ Codex stdio fixture rejects reroute (440.218459ms)
+✔ Codex stdio fixture rejects incomplete (459.2995ms)
+✔ offline council expands researcher instances (59.469333ms)
+✔ subscription-only rejects any API agent (19.207709ms)
+✔ subscription-only rejects Jev before an API call (1.572625ms)
+✔ API-only rejects subscription agents (1.462625ms)
+✔ API routes require explicit budget (1.210375ms)
+✔ owner maximum cannot be elevated in a request (10.278834ms)
+✔ duplicate IDs are rejected (7.028084ms)
+✔ expanded IDs cannot collide (14.488583ms)
+✔ unknown models are not aliased (1.365458ms)
+✔ effort cannot be silently downgraded (3.063375ms)
+✔ one verifier is required (2.117084ms)
+✔ agent cap includes the chair and reviewers (2.525041ms)
+✔ factual task without evidence is needs_input (1.439541ms)
+✔ future evidence is rejected (0.789542ms)
+✔ request hash ignores object key ordering (0.645208ms)
+✔ negative and nonfinite costs are rejected (0.248625ms)
+✔ stale paid price snapshots fail closed (0.242334ms)
+✔ unknown pricing is not represented as free (0.367791ms)
+✔ budget reservations are atomic and lifetime scoped (11.150125ms)
+✔ unknown API cost retains reservation (1.396875ms)
+✔ provider overrun stops the run and records the actual exposure (2.407375ms)
+✔ run-id payload mismatch is rejected (4.907333ms)
+✔ restart marks interrupted runs without replaying calls (0.660792ms)
+✔ missing semantic evidence cannot pass through valid JSON (0.40775ms)
+✔ invented evidence IDs block acceptance (0.334708ms)
+✔ duplicate verification checks block acceptance (0.142708ms)
+✔ blind verifier prompt excludes solver narrative (0.50075ms)
+✔ offline council retains a major objection despite supported claims (33.342833ms)
+✔ same run ID and payload returns saved result without new calls (5.502959ms)
+✔ no evidence dispatches zero calls (3.251166ms)
+✔ live calls require trusted enablement (7.871833ms)
+✔ unknown paid cost is held without retries (6.397541ms)
+✔ global semaphore includes parallel councils (90.865833ms)
+✔ cancellation stops later stages (9.11225ms)
+✔ HTML inspection parses markup, not escaped script text (15.736375ms)
+✔ invalid JSON-LD is a syntax result, not schema validity (0.649541ms)
+✔ MCP initializes, lists six tools, plans and runs offline (1215.384417ms)
+✔ offline console enforces Host, Origin, CSRF and has no live-run endpoint (1217.630834ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 58
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3891.22325

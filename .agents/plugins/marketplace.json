@@ -1,0 +1,20 @@
+{
+  "name": "council-forge-local",
+  "interface": {
+    "displayName": "Council Forge \u2014 local alpha"
+  },
+  "plugins": [
+    {
+      "name": "council-forge",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

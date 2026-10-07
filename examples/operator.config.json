@@ -1,0 +1,32 @@
+{
+  "liveEnabled": false,
+  "allowedModes": ["subscription_only"],
+  "maxConcurrency": 3,
+  "maxAgents": 16,
+  "maxCallsPerRun": 24,
+  "maxRunApiUsd": 0,
+  "apiLifetimeLimitUsd": 0,
+  "jev": {
+    "enabled": false,
+    "model": "typesafe/jev-1.13-20260917",
+    "keyEnv": "OPENROUTER_API_KEY",
+    "confidenceThreshold": 0.9,
+    "reservationUsd": 0.01
+  },
+  "providers": [
+    {
+      "id": "codex-subscription",
+      "kind": "codex-local",
+      "codexHome": "/replace/with/dedicated/user-authenticated/codex-home",
+      "codexExecutable": "codex",
+      "models": [
+        {
+          "id": "gpt-6.1-sol",
+          "label": "Example only \u2014 verify the account catalogue",
+          "efforts": ["high", "xhigh"],
+          "responseIds": ["gpt-6.1-sol"]
+        }
+      ]
+    }
+  ]
+}

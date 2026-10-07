@@ -1,0 +1,45 @@
+{
+  "runId": "example-offline-council",
+  "task": "Does the source canonical establish why the page is not indexed?",
+  "kind": "seo_audit",
+  "mode": "subscription_only",
+  "agents": [
+    {
+      "id": "technical_seo",
+      "role": "technical_seo",
+      "providerId": "demo",
+      "model": "fixture-model",
+      "instances": 1
+    },
+    {
+      "id": "skeptic",
+      "role": "skeptic",
+      "providerId": "demo",
+      "model": "fixture-model",
+      "instances": 1
+    },
+    {
+      "id": "verifier",
+      "role": "verifier",
+      "providerId": "demo",
+      "model": "fixture-model",
+      "instances": 1
+    },
+    {
+      "id": "chair",
+      "role": "chair",
+      "providerId": "demo",
+      "model": "fixture-model",
+      "instances": 1
+    }
+  ],
+  "evidence": [
+    {
+      "id": "source-1",
+      "source": "fixture://canonical-example",
+      "observedAt": "2026-10-07T00:00:00.000Z",
+      "kind": "source_html",
+      "excerpt": "<link rel=\"canonical\" href=\"https://example.test/services/\">"
+    }
+  ]
+}
