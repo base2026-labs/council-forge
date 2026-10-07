@@ -15,9 +15,21 @@ Use a dedicated provider key with a provider-side spend limit for live pilots. D
 promise zero overshoot from client-side cancellation or a text-based token estimate.
 The operator's database ceiling is lifetime-scoped; it does not reset daily or monthly.
 
-Known provider cost settles the reservation. A reported cost above the reservation is
-recorded and immediately holds the run. Unknown cost, malformed responses, timeout or
-ambiguous transport failure retain the whole reservation and do not trigger a retry.
+Known provider cost settles the reservation even when completion, tool, model, JSON or
+output-schema validation rejects the response. OpenRouter and Jev retain only sanitized
+request/model identities and individually valid usage fields, including charged HTTP
+rejections with a readable JSON receipt. A valid zero charge is known; omitted, invalid
+or uncertain cost remains UNKNOWN. Response validity never determines whether a charge
+is recorded. These are provider reports, not independent invoice verification.
+
+A reported cost above the reservation is recorded in both ledgers and immediately
+holds the run. Terminal accounting failure stops admission before queued calls acquire
+their local/global slot or reserve funds. Already dispatched calls retain their original
+cancellation signal, settle their own known/UNKNOWN exposure and keep call receipts before
+the held result is saved. Accounting failure takes precedence over earlier output errors.
+Cancellation and process interruption preserve uncertainty and do not authorize replay.
+Unknown cost, unreadable responses, timeout or ambiguous transport failure retain the
+whole reservation and do not trigger a retry.
 A compatible API without a cost receipt therefore requires reconciliation before reuse.
 The alpha has no automated refund, top-up or hidden reconciliation feature.
 

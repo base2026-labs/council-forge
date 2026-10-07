@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ProviderSettings } from '../schema.ts';
 import type { Invocation, Completion, Provider } from '../provider.ts';
+import { reportedReceipt, validateResponse } from '../provider.ts';
 import { fail } from '../policy.ts';
 import { envSecret, httpsEndpoint, jsonFetch } from './http.ts';
 const Envelope = z.object({
@@ -72,25 +73,23 @@ export class OpenAICompatibleProvider implements Provider {
       },
       this.fetcher,
     );
-    const out = Envelope.parse(raw),
-      choice = out.choices[0]!;
-    if (choice.message.tool_calls?.length)
-      fail('UNSUPPORTED_TOOL_CALL', 'Alpha API adapters do not execute model-supplied tools.');
-    if (choice.finish_reason !== 'stop')
-      fail('INCOMPLETE_GENERATION', 'Only a completed stop response is accepted.');
-    const usage = out.usage;
-    // OpenRouter reports cost; compatible endpoints may not. Do not invent an invoice amount.
-    // A compatible endpoint without usage.cost is held by the engine for reconciliation.
-    return {
-      text: choice.message.content,
-      actualModel: out.model,
-      requestId: out.id ?? null,
-      usage: {
-        inputTokens: usage?.prompt_tokens ?? null,
-        outputTokens: usage?.completion_tokens ?? null,
-        costUsd: usage?.cost ?? null,
-      },
-    };
+    return validateResponse(raw, () => {
+      const out = Envelope.parse(raw),
+        choice = out.choices[0]!;
+      if (choice.message.tool_calls?.length)
+        fail('UNSUPPORTED_TOOL_CALL', 'Alpha API adapters do not execute model-supplied tools.');
+      if (choice.finish_reason !== 'stop')
+        fail('INCOMPLETE_GENERATION', 'Only a completed stop response is accepted.');
+      const receipt = reportedReceipt(raw);
+      if (receipt.actualModel === null)
+        return fail('MODEL_MISMATCH', 'Provider model identity is invalid.');
+      return {
+        text: choice.message.content,
+        actualModel: receipt.actualModel,
+        requestId: receipt.requestId,
+        usage: receipt.usage,
+      };
+    });
   }
 }
 export interface DiscoveredModel {

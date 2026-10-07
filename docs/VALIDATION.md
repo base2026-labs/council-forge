@@ -122,3 +122,32 @@ Remaining: completed subscription council; paid OpenRouter/Jev pilots and invoic
 embedded/native platform acceptance; GSC/rendered/SERP connectors; adaptive/equal-budget
 evaluation; hosted authentication/retention/security. Separate independent review remains
 controller-owned. No merge, release, deployment or directory submission is authorized.
+
+## Offline accounting correction after independent review
+
+The independent review of candidate `b9cc92b7b91da6e499b1f04c3eb362c7dd787553`
+found CF-R1 (lost known charges on rejected responses) and CF-R2 (queued dispatch after
+overrun). Both exact synthetic probes reproduced in a separate normal checkout: the
+incomplete fixture reported USD 1.50 but retained only USD 0.01194 in each ledger; the
+serial overrun fixture dispatched two USD 0.75 calls after the first settlement failed.
+
+The correction separates sanitized response accounting from semantic acceptance and
+latches terminal accounting failure inside settlement. Both ledgers commit known charges
+for rejected OpenRouter/Jev responses. Queued work stops; already dispatched outcomes
+settle and retain receipts. The same serial probes now dispatch exactly one fixture call,
+record USD 0.75 in each ledger, preserve its identity/usage, and return HOLD/COST_OVERRUN.
+Identical replay dispatches no new call.
+
+New offline regressions cover incomplete/tool/schema/model/output/HTTP rejection, invalid
+individual usage fields, zero and unknown cost, Jev schema/choice/model/distribution/HTTP
+rejection and overrun, serial admission, concurrent settlement, accounting-error priority,
+cancellation, process interruption and no replay. They use synthetic transports and an
+isolated Node fixture process. No paid or subscription model turn is used.
+
+The correction worker records exact-head lint, typecheck, full tests, format and demo
+commands and results separately from hosted CI. The earlier 83-test candidate and installed
+plugin remain historical evidence. This correction does not reinstall the plugin or claim
+a live council, embedded-host acceptance, invoice verification, cross-platform execution,
+release or completed #1–#5 backlog. Existing subscription outcomes stay UNKNOWN until an
+authoritative receipt can be correlated to their preserved invocation identities; live
+admission remains revoked. The controller owns the next independent review.

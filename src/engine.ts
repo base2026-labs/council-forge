@@ -18,7 +18,8 @@ import {
   fail,
 } from './policy.ts';
 import { Store } from './store.ts';
-import type { Provider, Invocation, Completion } from './provider.ts';
+import type { Provider, Invocation, Completion, ProviderReceipt } from './provider.ts';
+import { ProviderResponseError } from './provider.ts';
 import { proposerPrompt, critiquePrompt, verifierPrompt, chairPrompt } from './prompts.ts';
 import { councilCapabilities } from './capabilities.ts';
 import { ROLE_CONTRACTS } from './roles.ts';
@@ -30,6 +31,7 @@ export interface JevAdvice {
   model: string;
   requestId: string | null;
   costUsd: number | null;
+  usage?: Completion['usage'];
 }
 export interface Router {
   advise(metrics: Record<string, number | string>, signal: AbortSignal): Promise<JevAdvice>;
@@ -140,16 +142,138 @@ export class CouncilEngine {
     );
     const receipts: unknown[] = [];
     const signal = controller.signal;
+    // Stop admission separately from cancellation: already dispatched transports
+    // must still yield their outcome and settle every known charge.
+    const admission = new AbortController();
+    const admissionSignal = AbortSignal.any([signal, admission.signal]);
+    let accountingFailure: unknown;
+    const errorCode = (error: unknown) =>
+      error instanceof CouncilError ? error.code : 'PROVIDER_OR_SCHEMA_ERROR';
+    const stopAdmission = (error: unknown) => {
+      if (!accountingFailure || errorCode(error) === 'COST_OVERRUN') accountingFailure = error;
+      admission.abort(accountingFailure);
+    };
     const use = <T>(fn: () => Promise<T>) =>
-      this.semaphore.use(signal, () =>
-        this.global ? this.global.use(this.settings.maxConcurrency, signal, fn) : fn(),
+      this.semaphore.use(admissionSignal, () =>
+        this.global ? this.global.use(this.settings.maxConcurrency, admissionSignal, fn) : fn(),
       );
-    const call = async (
+    const reserve = (id: string, amount: number) => {
+      try {
+        this.global?.budget.reserve(
+          id,
+          r.runId,
+          amount,
+          usdToMicro(r.apiBudgetUsd),
+          usdToMicro(this.settings.apiLifetimeLimitUsd),
+        );
+        try {
+          this.store.reserve(
+            id,
+            r.runId,
+            amount,
+            usdToMicro(r.apiBudgetUsd),
+            usdToMicro(this.settings.apiLifetimeLimitUsd),
+          );
+        } catch (error) {
+          this.global?.budget.settle(id, 0);
+          throw error;
+        }
+      } catch (error) {
+        stopAdmission(error);
+        throw error;
+      }
+    };
+    const settle = (id: string, costUsd: number | null) => {
+      let charged: number | null = null;
+      let failure: unknown;
+      try {
+        charged = costUsd === null ? null : usdToMicro(costUsd);
+      } catch (error) {
+        failure = error;
+        stopAdmission(error);
+      }
+      // Each ledger commits actual/UNKNOWN exposure even when the other reports
+      // an overrun. A thrown settlement must never discard an in-flight receipt.
+      for (const ledger of [this.store, this.global?.budget]) {
+        if (!ledger) continue;
+        try {
+          ledger.settle(id, charged);
+        } catch (error) {
+          if (!failure || errorCode(error) === 'COST_OVERRUN') failure = error;
+          stopAdmission(error);
+        }
+      }
+      if (!failure && costUsd === null) {
+        failure = new CouncilError(
+          'USAGE_UNKNOWN',
+          'Cost is unknown. Reservation retained; no automatic retry.',
+        );
+        stopAdmission(failure);
+      }
+      if (failure) throw failure;
+    };
+    const account = async <T, R>(
+      callId: string,
+      paid: boolean,
+      details: Record<string, unknown>,
+      send: () => Promise<T>,
+      receiptFor: (value: T) => ProviderReceipt,
+      accept: (value: T) => R,
+    ): Promise<R> => {
+      let value: T | undefined;
+      let rejected: unknown;
+      try {
+        value = await send();
+      } catch (error) {
+        rejected = error;
+      }
+      const observed =
+        value !== undefined
+          ? receiptFor(value)
+          : rejected instanceof ProviderResponseError
+            ? rejected.receipt
+            : {
+                actualModel: null,
+                requestId: null,
+                usage: { inputTokens: null, outputTokens: null, costUsd: null },
+              };
+      const receipt = {
+        ...details,
+        ...observed,
+        callId,
+        state: 'received',
+        responseErrorCode: rejected ? errorCode(rejected) : null,
+        errorCode: null as string | null,
+        diagnostic: rejected instanceof CouncilError ? (rejected.diagnostic ?? null) : null,
+      };
+      receipts.push(receipt);
+      this.store.event(r.runId, 'call_received', receipt);
+      try {
+        if (paid) settle(callId, observed.usage.costUsd);
+        if (rejected) throw rejected;
+        const accepted = accept(value!);
+        signal.throwIfAborted();
+        receipt.state = 'completed';
+        this.store.event(
+          r.runId,
+          details.phase === 'jev' ? 'jev_advice' : 'agent_completed',
+          receipt,
+        );
+        return accepted;
+      } catch (error) {
+        receipt.state = 'held';
+        receipt.errorCode = errorCode(error);
+        this.store.event(r.runId, details.phase === 'jev' ? 'jev_held' : 'agent_held', receipt);
+        throw error;
+      }
+    };
+    const call = async <T>(
       agent: Agent,
       phase: Invocation['phase'],
       prompt: string,
+      parse: (text: string) => T,
       claims: Claim[] = [],
-    ): Promise<string> =>
+    ): Promise<T> =>
       use(async () => {
         const { provider, model } = selectModel(this.settings, agent);
         const adapter = this.providers.get(provider.id);
@@ -158,104 +282,56 @@ export class CouncilEngine {
         const callId = `${r.runId}/${phase}/${agent.id}`;
         if (Buffer.byteLength(prompt) > 512000)
           fail('PROMPT_TOO_LARGE', 'Expanded deliberation context exceeds the alpha limit.');
-        if (paid) {
-          const estimate = reserveEstimate(
-            model,
-            prompt,
-            r.maxOutputTokens,
-            this.settings.maxPriceAgeHours,
-          );
-          this.global?.budget.reserve(
+        if (paid)
+          reserve(
             callId,
-            r.runId,
-            estimate,
-            usdToMicro(r.apiBudgetUsd),
-            usdToMicro(this.settings.apiLifetimeLimitUsd),
+            reserveEstimate(model, prompt, r.maxOutputTokens, this.settings.maxPriceAgeHours),
           );
-          try {
-            this.store.reserve(
-              callId,
-              r.runId,
-              reserveEstimate(model, prompt, r.maxOutputTokens, this.settings.maxPriceAgeHours),
-              usdToMicro(r.apiBudgetUsd),
-              usdToMicro(this.settings.apiLifetimeLimitUsd),
-            );
-          } catch (error) {
-            this.global?.budget.settle(callId, 0);
-            throw error;
-          }
-        }
-        this.store.event(r.runId, 'agent_started', {
-          agent: agent.id,
-          phase,
-          provider: provider.id,
-          model: agent.model,
-          effort: agent.effort ?? null,
-        });
-        let result: Completion;
-        try {
-          result = await adapter.complete({
-            agent,
-            phase,
-            prompt,
-            maxOutputTokens: r.maxOutputTokens,
-            signal,
-            evidence: r.evidence,
-            claims,
-            outputLanguage: r.outputLanguage,
-          });
-        } catch (error) {
-          if (paid) {
-            this.store.settle(callId, null);
-            this.global?.budget.settle(callId, null);
-          }
-          receipts.push({
-            agent: agent.id,
-            phase,
-            requestedModel: agent.model,
-            requestedEffort: agent.effort ?? null,
-            state: 'held',
-            errorCode: error instanceof CouncilError ? error.code : 'PROVIDER_OR_SCHEMA_ERROR',
-            diagnostic: error instanceof CouncilError ? (error.diagnostic ?? null) : null,
-            usage: { inputTokens: null, outputTokens: null, costUsd: null },
-          });
-          throw error;
-        }
-        if (paid) {
-          const charged = result.usage.costUsd === null ? null : usdToMicro(result.usage.costUsd);
-          try {
-            this.store.settle(callId, charged);
-          } finally {
-            this.global?.budget.settle(callId, charged);
-          }
-        }
-        const receipt = {
+        const details = {
           agent: agent.id,
           phase,
           provider: provider.id,
           requestedModel: agent.model,
-          actualModel: result.actualModel,
           requestedEffort: agent.effort ?? null,
-          actualEffort: result.actualEffort ?? null,
-          effortReceipt: result.actualEffort
-            ? 'provider-attested'
-            : 'requested-only; actual effort unknown',
-          capabilityReceipt: result.capabilityReceipt ?? councilCapabilities(),
-          requestId: result.requestId,
           billing: provider.kind === 'mock' ? 'simulation' : paid ? 'api' : 'subscription',
-          usage: result.usage,
         };
-        receipts.push(receipt);
-        this.store.event(r.runId, 'agent_completed', receipt);
-        if (!model.responseIds.includes(result.actualModel))
-          fail('MODEL_MISMATCH', 'Provider returned an unapproved model identity.');
-        if (paid && result.usage.costUsd === null)
-          fail(
-            'USAGE_UNKNOWN',
-            'Paid result has no cost receipt. Reservation is retained; no automatic retry.',
-          );
-        signal.throwIfAborted();
-        return result.text;
+        this.store.event(r.runId, 'agent_started', {
+          ...details,
+          callId,
+          model: agent.model,
+          effort: agent.effort ?? null,
+        });
+        return account(
+          callId,
+          paid,
+          details,
+          () =>
+            adapter.complete({
+              agent,
+              phase,
+              prompt,
+              maxOutputTokens: r.maxOutputTokens,
+              signal,
+              evidence: r.evidence,
+              claims,
+              outputLanguage: r.outputLanguage,
+            }),
+          (result) => ({
+            actualModel: result.actualModel,
+            requestId: result.requestId,
+            usage: result.usage,
+            actualEffort: result.actualEffort ?? null,
+            effortReceipt: result.actualEffort
+              ? 'provider-attested'
+              : 'requested-only; actual effort unknown',
+            capabilityReceipt: result.capabilityReceipt ?? councilCapabilities(),
+          }),
+          (result) => {
+            if (!model.responseIds.includes(result.actualModel))
+              fail('MODEL_MISMATCH', 'Provider returned an unapproved model identity.');
+            return parse(result.text);
+          },
+        );
       });
     try {
       let advice: JevAdvice | null = null;
@@ -263,53 +339,43 @@ export class CouncilEngine {
         if (!this.router) fail('JEV_UNAVAILABLE', 'Jev adapter is not registered.');
         advice = await use(async () => {
           const id = `${r.runId}/jev`;
-          this.global?.budget.reserve(
+          reserve(id, usdToMicro(this.settings.jev.reservationUsd));
+          return account(
             id,
-            r.runId,
-            usdToMicro(this.settings.jev.reservationUsd),
-            usdToMicro(r.apiBudgetUsd),
-            usdToMicro(this.settings.apiLifetimeLimitUsd),
-          );
-          try {
-            this.store.reserve(
-              id,
-              r.runId,
-              usdToMicro(this.settings.jev.reservationUsd),
-              usdToMicro(r.apiBudgetUsd),
-              usdToMicro(this.settings.apiLifetimeLimitUsd),
-            );
-          } catch (error) {
-            this.global?.budget.settle(id, 0);
-            throw error;
-          }
-          let result: JevAdvice;
-          try {
-            result = await this.router!.advise(
-              {
-                taskKind: r.kind,
-                agentCount: p.agents.length,
-                evidenceCount: r.evidence.length,
-                apiBudgetUsd: r.apiBudgetUsd,
+            true,
+            {
+              agent: 'jev',
+              phase: 'jev',
+              provider: 'openrouter',
+              billing: 'api',
+              requestedModel: this.settings.jev.model,
+              requestedEffort: null,
+            },
+            () =>
+              this.router!.advise(
+                {
+                  taskKind: r.kind,
+                  agentCount: p.agents.length,
+                  evidenceCount: r.evidence.length,
+                  apiBudgetUsd: r.apiBudgetUsd,
+                },
+                signal,
+              ),
+            (result) => ({
+              actualModel: result.model,
+              requestId: result.requestId,
+              choice: result.choice,
+              confidence: result.confidence,
+              model: result.model,
+              costUsd: result.costUsd,
+              usage: result.usage ?? {
+                inputTokens: null,
+                outputTokens: null,
+                costUsd: result.costUsd,
               },
-              signal,
-            );
-          } catch (error) {
-            this.store.settle(id, null);
-            this.global?.budget.settle(id, null);
-            throw error;
-          }
-          try {
-            this.store.settle(id, result.costUsd === null ? null : usdToMicro(result.costUsd));
-          } finally {
-            this.global?.budget.settle(
-              id,
-              result.costUsd === null ? null : usdToMicro(result.costUsd),
-            );
-          }
-          if (result.costUsd === null)
-            fail('USAGE_UNKNOWN', 'Jev cost is unknown. Reservation retained.');
-          this.store.event(r.runId, 'jev_advice', result);
-          return result;
+            }),
+            (result) => result,
+          );
         });
         if (
           advice.confidence < this.settings.jev.confidenceThreshold ||
@@ -324,23 +390,21 @@ export class CouncilEngine {
         (a) => !['skeptic', 'verifier', 'chair'].includes(a.role),
       );
       const attempts = await Promise.allSettled(
-        independent.map(async (a) =>
-          OpinionSchema.parse(
-            JSON.parse(
-              await call(
-                a,
-                'propose',
-                proposerPrompt(a, {
-                  ...r,
-                  evidence: r.evidence.filter((e) =>
-                    ROLE_CONTRACTS[a.role].allowedEvidenceKinds.includes(e.kind),
-                  ),
-                }),
+        independent.map((a) =>
+          call(
+            a,
+            'propose',
+            proposerPrompt(a, {
+              ...r,
+              evidence: r.evidence.filter((e) =>
+                ROLE_CONTRACTS[a.role].allowedEvidenceKinds.includes(e.kind),
               ),
-            ),
+            }),
+            (text) => OpinionSchema.parse(JSON.parse(text)),
           ),
         ),
       );
+      if (accountingFailure) throw accountingFailure;
       const failed = attempts.find((a) => a.status === 'rejected');
       if (failed?.status === 'rejected') throw failed.reason;
       const opinions = attempts.map((a) => {
@@ -351,12 +415,20 @@ export class CouncilEngine {
         .flatMap((o) => o.claims)
         .map((c, n) => ({ ...c, id: `C${n + 1}` }));
       const skeptic = p.agents.find((a) => a.role === 'skeptic')!;
-      const critique = OpinionSchema.parse(
-        JSON.parse(await call(skeptic, 'critique', critiquePrompt(r, claims, opinions), claims)),
+      const critique = await call(
+        skeptic,
+        'critique',
+        critiquePrompt(r, claims, opinions),
+        (text) => OpinionSchema.parse(JSON.parse(text)),
+        claims,
       );
       const verifier = p.agents.find((a) => a.role === 'verifier')!;
-      const verification = VerificationSchema.parse(
-        JSON.parse(await call(verifier, 'verify', verifierPrompt(r, claims), claims)),
+      const verification = await call(
+        verifier,
+        'verify',
+        verifierPrompt(r, claims),
+        (text) => VerificationSchema.parse(JSON.parse(text)),
+        claims,
       );
       const gate = evaluateClaims(
         claims,
@@ -371,8 +443,12 @@ export class CouncilEngine {
       const decision = gate.blockers.length ? 'hold' : 'accepted_for_review';
       const packet = { task: r.task, decision, claims, verification, objections, gate };
       const chair = p.agents.find((a) => a.role === 'chair')!;
-      const synthesis = ChairSchema.parse(
-        JSON.parse(await call(chair, 'chair', chairPrompt(packet, r.outputLanguage), claims)),
+      const synthesis = await call(
+        chair,
+        'chair',
+        chairPrompt(packet, r.outputLanguage),
+        (text) => ChairSchema.parse(JSON.parse(text)),
+        claims,
       );
       const result = {
         runId: r.runId,
@@ -399,6 +475,7 @@ export class CouncilEngine {
       this.store.finish(r.runId, 'completed', result);
       return result;
     } catch (error) {
+      error = accountingFailure ?? error;
       const code =
         error instanceof CouncilError
           ? error.code
@@ -408,7 +485,7 @@ export class CouncilEngine {
       // Do not persist arbitrary provider error bodies: they can contain credentials or prompt fragments.
       const result = {
         runId: r.runId,
-        state: signal.aborted ? 'cancelled' : 'held',
+        state: code === 'COST_OVERRUN' ? 'held' : signal.aborted ? 'cancelled' : 'held',
         decision: 'hold',
         simulation: p.simulation,
         ...context,
