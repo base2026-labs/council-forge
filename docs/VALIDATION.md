@@ -25,4 +25,20 @@ or hosted OAuth deployment was performed. UI HTTP checks are not visual/browser 
 
 Mocked/executable-fixture tests do not prove compatibility with a current installed Codex
 build or an account's model entitlements. Provider pilots remain a release gate.
-Linux Node 22 and GitHub Actions results must be recorded separately after execution.
+
+## Independent Linux validation
+
+The public repository was cloned at commit `528f67fcc40ed10ae740c116a988cc1315d483ad`
+and checked on Linux with Node.js **22.19.0** using `npm ci --ignore-scripts`.
+Type check, compilation, **58/58 tests**, Prettier check and the offline CLI demo all
+completed successfully. The working tree remained clean. The expected experimental
+SQLite warning appeared on stderr.
+
+## GitHub-hosted CI limitation
+
+Workflow run `37607845789`, job `112747609835`, did **not start** any steps because of
+an account-level restriction. It is not a passing CI run and not evidence of a code-test
+failure. No account settings or billing changes were made. Re-running unchanged jobs
+was avoided. The workflow is retained for execution when the account restriction is resolved.
+
+These receipt/documentation additions do not change the tested runtime source.
