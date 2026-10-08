@@ -1,6 +1,6 @@
 import { fail, hash } from './policy.ts';
 import type { Evidence } from './schema.ts';
-import type { TypedObservation } from './evidence-schema.ts';
+import { DocumentUrl, type TypedObservation } from './evidence-schema.ts';
 
 // Walk before parsing schemas or hashing. No recursion, getters, toJSON or coercion.
 export function boundJson(value: unknown, maxBytes: number, maxDepth: number, maxNodes = 20000) {
@@ -57,6 +57,20 @@ export function boundJson(value: unknown, maxBytes: number, maxDepth: number, ma
   if (Buffer.byteLength(JSON.stringify(value)) > maxBytes)
     fail('COLLECTION_LIMIT', 'Data exceeds the authorized byte bound.');
 }
+// Validate inert identifier syntax before parsed membership, without rewriting the URL.
+// Scope/provenance/hashes remain caller assertions, not proof of property ownership.
+export function validateGscPropertyUrl(property: string, url: string) {
+  const u = new URL(DocumentUrl.parse(url));
+  let within: boolean;
+  if (property.startsWith('sc-domain:')) {
+    const host = property.slice(10).toLowerCase();
+    within = u.hostname === host || u.hostname.endsWith('.' + host);
+  } else {
+    const p = new URL(property);
+    within = u.origin === p.origin && u.pathname.startsWith(p.pathname);
+  }
+  if (!within) fail('COLLECTION_SCOPE', 'Concrete URL does not belong to the exact GSC property.');
+}
 export function validateTypedResourceScope(resources: string[], o: TypedObservation) {
   const required = [o.resource.propertyId, o.resource.url].filter((v): v is string => v !== null);
   if (o.adapter === 'gsc_search_analytics') {
@@ -105,6 +119,18 @@ export function validateTypedEvidence(evidence: Evidence[]) {
         'CONFLICTING_PROVENANCE',
         'Typed request/resource, capture or freshness binding is inconsistent.',
       );
+    if (o.adapter === 'gsc_url_inspection')
+      validateGscPropertyUrl(o.request.siteUrl, o.request.inspectionUrl);
+    if (o.adapter === 'gsc_search_analytics') {
+      const pageIndex = o.request.dimensions?.indexOf('page') ?? -1;
+      if (pageIndex >= 0)
+        for (const row of o.report.rows ?? [])
+          if (row.keys) validateGscPropertyUrl(o.request.siteUrl, row.keys[pageIndex]!);
+      for (const group of o.request.dimensionFilterGroups ?? [])
+        for (const filter of group.filters)
+          if (filter.dimension === 'page' && (filter.operator ?? 'equals') === 'equals')
+            validateGscPropertyUrl(o.request.siteUrl, filter.expression);
+    }
     const source = o.resource.propertyId ?? o.resource.url;
     const kind =
       o.adapter === 'dom'

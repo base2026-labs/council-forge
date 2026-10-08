@@ -11,6 +11,7 @@ import {
 import {
   boundJson,
   observationIdentity,
+  validateGscPropertyUrl,
   validateTypedEvidence,
   validateTypedResourceScope,
 } from './evidence-validation.ts';
@@ -70,15 +71,6 @@ const commonLimitations = [
 function scoped(scope: TypedScope, resource: string) {
   if (!scope.resources.includes(resource))
     fail('COLLECTION_SCOPE', 'Resource is outside the exact authorized set.');
-}
-function withinProperty(property: string, url: string) {
-  const u = new URL(url);
-  if (property.startsWith('sc-domain:')) {
-    const host = property.slice(10).toLowerCase();
-    return u.hostname === host || u.hostname.endsWith('.' + host);
-  }
-  const p = new URL(property);
-  return u.origin === p.origin && u.pathname.startsWith(p.pathname);
 }
 const providerError = (e: { code?: number; status?: string; message?: string } | undefined) =>
   e ? { code: e.code ?? null, status: e.status ?? null, message: e.message ?? null } : null;
@@ -176,8 +168,7 @@ function normalize(scope: TypedScope, packet: TypedExport, nowMs: number): Typed
   };
   if (packet.sourceType === 'gsc_url_inspection_export') {
     scoped(scope, packet.request.inspectionUrl);
-    if (!withinProperty(packet.request.siteUrl, packet.request.inspectionUrl))
-      fail('COLLECTION_SCOPE', 'Inspected URL does not belong to the exact property.');
+    validateGscPropertyUrl(packet.request.siteUrl, packet.request.inspectionUrl);
     const result = error ? undefined : packet.response.inspectionResult;
     const index = result?.indexStatusResult;
     if (index?.lastCrawlTime && Date.parse(index.lastCrawlTime) > observedMs)
@@ -276,8 +267,7 @@ function normalize(scope: TypedScope, packet: TypedExport, nowMs: number): Typed
         fail('INVALID_EXPORT', 'Row date is invalid or outside the exact requested window.');
       const page = row.keys[dimensions.indexOf('page')];
       if (dimensions.includes('page')) {
-        if (!page || !withinProperty(r.siteUrl, page))
-          fail('COLLECTION_SCOPE', 'Row page does not belong to the exact property.');
+        validateGscPropertyUrl(r.siteUrl, page!);
         scoped(scope, page!);
       }
     }
@@ -286,8 +276,7 @@ function normalize(scope: TypedScope, packet: TypedExport, nowMs: number): Typed
   for (const group of r.dimensionFilterGroups ?? [])
     for (const f of group.filters) {
       if (f.dimension === 'page' && (f.operator ?? 'equals') === 'equals') {
-        if (!withinProperty(r.siteUrl, f.expression))
-          fail('COLLECTION_SCOPE', 'Page filter does not belong to the exact property.');
+        validateGscPropertyUrl(r.siteUrl, f.expression);
         scoped(scope, f.expression);
       }
     }
