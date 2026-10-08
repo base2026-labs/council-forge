@@ -1,50 +1,62 @@
-# Roadmap and acceptance gates
+# Roadmap and existing backlog
 
-## Current milestone: foundation alpha
+The five existing GitHub issues remain canonical. This candidate extends the original
+repository and MIT attribution; it creates no replacement project or duplicate issues.
+No issue is closed merely because a draft PR or offline fixture exists.
 
-Implemented: policy/evidence kernel, one-round council, Jev Decisions port, explicit API
-and local subscription ports, SQLite reservations, CLI, stdio MCP, HTML inspection,
-offline planning console, plugin package metadata and automated fixture tests.
+| Existing issue                                                  | Candidate delivery                                                                                                                              | Remaining acceptance                                                                                                                                 |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [M1 #1](https://github.com/offflinerpsy/council-forge/issues/1) | Current app-server contracts, existing-auth isolation, exact pins, read-only boundary and UNKNOWN failure receipts                              | Full live council, account/quota failures, paid OpenRouter/Jev pilots with explicit authorization, token-only billing reconciliation                 |
+| [M2 #2](https://github.com/offflinerpsy/council-forge/issues/2) | Installed native Codex plugin, ten tools, MCP Apps room, role selectors, plan/run/cancel/status/evidence receipts                               | Embedded desktop rendering, complete successful live flow, hosted ChatGPT route and consent/auth UX                                                  |
+| [M3 #3](https://github.com/offflinerpsy/council-forge/issues/3) | Thirteen role contracts, three presets, typed bounded imports, scoped public HTTPS source collector and explicit bounded robots-aware traversal | Live crawler acceptance, rendered browser, authorized GSC, schema requirements and SERP adapters, stronger evaluation                                |
+| [M4 #4](https://github.com/offflinerpsy/council-forge/issues/4) | Immutable bounded candidate admission and evidence advice; existing Jev remains advisory                                                        | Jev ranking in shadow mode, bounded revision, reproducible equal-budget comparisons; no accuracy/cost gain claim                                     |
+| [M5 #5](https://github.com/offflinerpsy/council-forge/issues/5) | Lint, platform CI matrix, review template, maintainer ownership and exact-head evidence                                                         | Running hosted CI, native platform pilots, independent controller review, retention/security hardening and any separately authorized release/hosting |
 
-Not complete: live inference validation, actual plugin installation, production-grade
-GUI, registered OAuth integration, browser/GSC tool execution, adaptive orchestration,
-published npm package, remote MCP hosting, public directory publication or commercial readiness.
+## Current milestone
 
-## M1 — provider contract pilots
+`0.1.0-alpha.3` is the current local native plugin candidate. Installation and native MCP invocation
+are verified on Codex CLI 0.160.0/Linux. The component fits desktop/mobile viewports.
+A subscription attempt is held with incomplete proposal turns and uncertain usage; no
+complete council is claimed. Paid inference, OAuth, broader access and another uncertain
+operation are outside this execution. The coordinator must resolve the live gate.
 
-Run owner-approved, bounded, non-private fixtures on OpenRouter, Jev and local Codex.
-Record exact request/response model identity, requested/supported effort, usage source,
-latency, completion status and failure behavior. Compare provider invoices to receipts.
-Verify account/model discovery, app-server schema, no API-key fallback, connector isolation,
-cancellation, rate-limit failures and max-concurrency behavior. No retry of ambiguous spend.
+## Delivery gates
 
-Implement compatible-API token-only reconciliation without inventing provider-reported costs.
+Preserve independent proposals, skeptic, blind verifier and chair in every research
+preset. Explicit model/effort/count/access/budget pins are immutable. Missing evidence
+produces HOLD. Every paid call reserves funds before dispatch and reconciles reported
+actual cost afterward; uncertain charges retain UNKNOWN and are not automatically replayed.
+All local live calls share one global three-slot coordinator. User plugins are not
+inherited by model providers. Public project text is English; outputs support BCP 47 tags.
 
-## M2 — native plugin experience
+Hosted products need an approved service agreement, supported Sign in with ChatGPT,
+authenticated HTTPS MCP, tenant isolation, vault-backed keys, distributed limits and
+retention controls. Ordinary Codex auth must not become a commercial subscription proxy.
+Merge, release, deployment and directory submission require actual authority.
 
-Test root manifest and compatibility layout on an actual supported Codex build. Verify
-MCP process launch, root-variable expansion, dependencies and cached install refresh.
-Create the live Council Room UI with accessible per-agent selectors, limits, event stream
-and evidence/objection views. Keep consent and secrets outside model-controlled arguments.
+## M3 typed offline implementation — 2026-10-08
 
-## M3 — SEO evidence collectors
+The supplied-export adapters now normalize bounded URL Inspection and Search Analytics
+responses plus supplied source/rendered DOM observations through the existing evidence
+flow. Generic imports remain supported. See [M3 requirement-to-evidence matrix](SEO-EVIDENCE.md#requirement-to-evidence-matrix-for-existing-m3-3).
+The live GSC/browser/crawler collector acceptance, SERP/schema requirements
+and broader evaluation remainder remain unverified/open. Public synthetic regressions are
+not a completed live collector or accuracy benchmark. M3 and AGR-45 remain open.
 
-Add bounded HTTP crawl with redirects/robots scope, isolated rendered-browser sampling,
-read-only GSC observations, sitemap and structured-data validators, then selected search
-providers. Keep source versus rendered versus GSC provenance explicit. Every paid search
-or crawl call goes through the same budget system. Never imply a parser is a full audit.
+## M3 bounded crawler implementation — 2026-10-08
 
-## M4 — adaptive councils and evaluation
+[Bounded traversal and receipt contract](BOUNDED-CRAWL.md) is implemented and tested with
+fake transports. Source links/redirects and conservative robots decisions remain distinct
+from user authority and provider indexation reports. No crawler/model pilot is part of
+this slice. Live collection and original M1–M5 acceptance remain open.
 
-Let Jev rank admitted plans in shadow mode, preserving user pins. Missing evidence triggers
-bounded retrieval or HOLD, not automatic stronger-model inference. Add at most one bounded
-revision round before expanding debate modes. Measure acceptance accuracy, error detection,
-cost and latency against a single strong model and independent sampling at equal budgets.
-No benchmark gain claim until a reproducible evaluation supports it.
+## M1/M2 native deliverability continuation — 2026-10-08
 
-## M5 — hosted product
-
-Complete the official Sign in with ChatGPT registration/integration for the intended
-product; no ordinary Codex-auth subscription proxy. Add authenticated remote MCP, tenant
-isolation, vault-backed keys, retention controls, distributed budgets, release security
-review, public submission and a clear service/privacy policy.
+The current package adds read-only saved-run reopening, correlated terminal knowledge
+and operator-controlled namespaced state with an exact run/request admission. A complete
+five-role protocol council survives lost delivery/restart in four offline language
+fixtures without replay. This extends the accepted crawler/typed-evidence/accounting
+work rather than replacing it. The executor must verify the actual updated installation,
+record supported UI attempts and provide a distinct acceptance preflight. Live admission
+remains revoked; unresolved old exposure and embedded/live acceptance require the
+existing coordinator's concrete next action. No M1–M5 issue is closed by offline checks.

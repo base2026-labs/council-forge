@@ -1,18 +1,98 @@
 import { DatabaseSync } from 'node:sqlite';
 import { fail } from './policy.ts';
+import { NativeReceiptSchema, NativeContextSchema, type NativeReceipt } from './native-receipt.ts';
 export class Store {
   private db: DatabaseSync;
   constructor(path = ':memory:') {
     this.db = new DatabaseSync(path);
-    this.db.exec(`PRAGMA busy_timeout=5000;
+    this.db.exec(`PRAGMA busy_timeout=5000; PRAGMA synchronous=FULL;
       CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, hash TEXT NOT NULL, state TEXT NOT NULL, result TEXT);
       CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, reserved INTEGER NOT NULL, charged INTEGER, state TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS native_invocations (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, state TEXT NOT NULL, details TEXT NOT NULL, receipt TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL, at TEXT NOT NULL, type TEXT NOT NULL, data TEXT NOT NULL);`);
   }
   recover() {
-    this.db.exec(
-      "UPDATE runs SET state='interrupted' WHERE state='running'; UPDATE calls SET state='unknown' WHERE state='reserved';",
-    );
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.exec(
+        "UPDATE runs SET state='interrupted' WHERE state='running'; UPDATE calls SET state='unknown' WHERE state='reserved';",
+      );
+      const pending = this.db
+        .prepare(
+          "SELECT id,run_id,receipt FROM native_invocations WHERE state NOT IN ('terminal','unknown')",
+        )
+        .all() as { id: string; run_id: string; receipt: string }[];
+      for (const row of pending) {
+        const receipt = NativeReceiptSchema.parse({
+          ...JSON.parse(row.receipt),
+          state: 'unknown',
+          boundary: 'recovery',
+          outcome: 'unknown',
+          errorCode: 'PROCESS_INTERRUPTED',
+        });
+        this.db
+          .prepare('UPDATE native_invocations SET state=?,receipt=? WHERE id=?')
+          .run(receipt.state, JSON.stringify(receipt), row.id);
+        this.event(row.run_id, 'native_receipt', { callId: row.id, ...receipt });
+      }
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  nativeReceipt(id: string, runId: string, details: Record<string, unknown>, raw: NativeReceipt) {
+    const receipt = NativeReceiptSchema.parse(raw);
+    const context = NativeContextSchema.parse(details);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const previous = this.db
+        .prepare('SELECT run_id,state,receipt FROM native_invocations WHERE id=?')
+        .get(id) as { run_id: string; state: string; receipt: string } | undefined;
+      if (previous) {
+        if (previous.run_id !== runId)
+          fail('NATIVE_IDENTITY_CONFLICT', 'Native invocation belongs to another run.');
+        const saved = NativeReceiptSchema.parse(JSON.parse(previous.receipt));
+        for (const key of [
+          'threadId',
+          'turnId',
+          'threadStartRequestId',
+          'turnStartRequestId',
+        ] as const) {
+          if (saved[key] !== null && saved[key] !== receipt[key])
+            fail('NATIVE_IDENTITY_CONFLICT', 'Native invocation identity cannot change.');
+        }
+        // First terminal/unknown receipt is immutable. Recovery never authorizes replay.
+        if (['terminal', 'unknown'].includes(previous.state)) {
+          this.db.exec('COMMIT');
+          return;
+        }
+        this.db
+          .prepare('UPDATE native_invocations SET state=?,receipt=? WHERE id=?')
+          .run(receipt.state, JSON.stringify(receipt), id);
+      } else {
+        if (receipt.state !== 'requested')
+          fail('NATIVE_RECEIPT_UNREQUESTED', 'A native receipt requires a durable request.');
+        this.db
+          .prepare('INSERT INTO native_invocations VALUES (?,?,?,?,?)')
+          .run(id, runId, receipt.state, JSON.stringify(context), JSON.stringify(receipt));
+      }
+      this.event(runId, 'native_receipt', { ...context, callId: id, ...receipt });
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  nativeInvocations(runId: string) {
+    const rows = this.db
+      .prepare('SELECT id,state,details,receipt FROM native_invocations WHERE run_id=? ORDER BY id')
+      .all(runId) as { id: string; state: string; details: string; receipt: string }[];
+    return rows.map((row) => ({
+      ...row,
+      details: JSON.parse(row.details) as unknown,
+      receipt: NativeReceiptSchema.parse(JSON.parse(row.receipt)),
+    }));
   }
   begin(id: string, hash: string) {
     const previous = this.get(id);

@@ -19,9 +19,13 @@ multi-tenant server. The planning UI binds to loopback, checks Host/Origin, requ
 per-process CSRF token for POST, and serves a restrictive CSP. It has no live API endpoint.
 
 Local app-server isolation remains a release gate. Read-only filesystem sandboxing alone
-does not constrain an enabled MCP or connector. The adapter refuses integrations in its
-dedicated configuration and checks callable tools, but a live OS-sandbox/security pilot
-is still necessary. No production-write tool is offered by Council Forge.
+does not constrain an enabled MCP or connector. The adapter disables integrations with
+invocation-only overrides and verifies effective configuration and callable tools.
+Linux sandbox write denial is observed; complete live flow, platform and hostile-process
+validation remain gates. No production-write tool is offered by Council Forge. Native UI
+CSP declares no external origins. Public source GETs use exact URL scope, pinned public
+IPv4 DNS and bounded redirects/bytes/deadlines, without cookies, keys or authentication.
+Collection is a separate operator action, never a live model tool.
 
 ## Persistence and crash recovery
 

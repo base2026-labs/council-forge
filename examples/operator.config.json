@@ -1,5 +1,6 @@
 {
   "liveEnabled": false,
+  "outputLanguage": "en",
   "allowedModes": ["subscription_only"],
   "maxConcurrency": 3,
   "maxAgents": 16,
@@ -17,13 +18,13 @@
     {
       "id": "codex-subscription",
       "kind": "codex-local",
-      "codexHome": "/replace/with/dedicated/user-authenticated/codex-home",
+      "codexHome": "/replace/with/existing/user-authenticated/codex-home",
       "codexExecutable": "codex",
       "models": [
         {
           "id": "gpt-6.1-sol",
           "label": "Example only \u2014 verify the account catalogue",
-          "efforts": ["high", "xhigh"],
+          "efforts": ["high", "xhigh", "max"],
           "responseIds": ["gpt-6.1-sol"]
         }
       ]

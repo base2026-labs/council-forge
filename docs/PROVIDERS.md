@@ -47,17 +47,31 @@ without passing API-key environment variables. It accepts managed `chatgpt` acco
 state, refuses API-key/external-token sessions, checks the requested model and effort,
 and refuses missing model attestation or rerouting.
 
-Use a **dedicated** Codex home signed in through the official user flow. Do not reuse a
-profile with plugins, hooks, MCP servers or callable apps. Do not copy `auth.json`, extract
-stored tokens or proxy undocumented backend endpoints. The adapter works in a temporary
-empty directory and requests a restricted read-only sandbox. It rejects configured
-integrations and observed tool calls. These checks are defense-in-depth, not a substitute
-for an OS-level sandbox or a verified host tool-denial profile.
+Use an existing authenticated Codex home; a separate home must be authenticated by the
+user through the official flow. Do not copy `auth.json`, extract stored tokens or proxy
+undocumented backend endpoints. The adapter never edits the profile. Supported process
+overrides disable apps, plugins, hooks, shell/unified execution, web/browser/computer
+tools, artifact/image tools and multi-agent delegation. It discovers configured MCP
+names, restarts with per-server disable overrides and verifies the effective config.
+An empty top-level MCP table does not clear inherited settings and is not accepted as proof.
 
-Live inference, account quota behavior, model receipt shapes, host integration isolation,
-and Windows/macOS/Linux behavior still require an owner-approved E2E pilot. A schema
-change fails closed. Native Codex usage may not expose normalized token/cost receipts;
-those fields remain null. Output token limits are not claimed to be enforced on this route.
+The adapter runs in an empty temporary directory. It attests model, effort, ordinary
+service tier, `never` approval policy, read-only sandbox and disabled network before a
+turn, then checks for zero callable apps/MCP tools/resources. No model tool dispatcher
+is exposed. Observed tool calls, changed auth or model rerouting stop the run. Native
+read-only filesystem enforcement is also required; Linux write denial was observed
+with `EROFS`. This is not a claim of hostile-process isolation or universal platform validation.
+
+Codex 0.160.0 rejects the obsolete `readOnly.access` turn field. The current adapter
+uses `sandboxPolicy: {type: "readOnly", networkAccess: false}`. Failure receipts include
+the RPC method and dispatch state without copying raw provider diagnostics. A failure
+after `turn/start` is sent remains uncertain and is never automatically replayed.
+
+See VALIDATION.md for the current Linux subscription pilot. Paid provider pilots,
+quota exhaustion and native Windows/macOS behavior remain unverified. A schema
+change fails closed. Correlated native usage fields are retained when reported; missing
+fields and subscription cost remain null. Durable lifecycle/identity handling is described
+in [NATIVE-RECEIPTS.md](NATIVE-RECEIPTS.md). Output token limits are not claimed to be enforced on this route.
 
 The app-server route is for permitted local/open-source usage, **not a commercial or
 hosted service**. A hosted startup must implement the appropriate Sign in with ChatGPT

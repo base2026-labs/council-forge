@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
+import { boundJson, validateTypedEvidence } from './evidence-validation.ts';
 import {
   SettingsSchema,
   RequestSchema,
   type Settings,
-  type CouncilRequest,
   type Agent,
   type ModelSettings,
 } from './schema.ts';
@@ -11,6 +11,7 @@ export class CouncilError extends Error {
   constructor(
     public code: string,
     message: string,
+    public diagnostic?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CouncilError';
@@ -50,13 +51,18 @@ export function selectModel(settings: Settings, agent: Agent) {
 }
 export function preflight(rawSettings: unknown, rawRequest: unknown) {
   const settings = SettingsSchema.parse(rawSettings);
-  const request = RequestSchema.parse(rawRequest);
+  const parsed = RequestSchema.parse(rawRequest);
+  const request = { ...parsed, outputLanguage: parsed.outputLanguage ?? settings.outputLanguage };
   if (new Set(settings.providers.map((p) => p.id)).size !== settings.providers.length)
     fail('DUPLICATE_PROVIDER', 'Provider IDs must be unique.');
   if (new Set(request.agents.map((a) => a.id)).size !== request.agents.length)
     fail('DUPLICATE_AGENT', 'Agent IDs must be unique.');
   if (new Set(request.evidence.map((e) => e.id)).size !== request.evidence.length)
     fail('DUPLICATE_EVIDENCE', 'Evidence IDs must be unique.');
+  if (request.evidence.some((e) => e.observation)) boundJson(request.evidence, 200000, 32);
+  validateTypedEvidence(request.evidence);
+  if (request.evidence.some((e) => e.observation && Date.parse(e.observedAt) > Date.now()))
+    fail('FUTURE_EVIDENCE', 'Typed observation timestamps cannot be in the future.');
   if (request.evidence.some((e) => Date.parse(e.observedAt) > Date.now() + 300000))
     fail('FUTURE_EVIDENCE', 'Evidence timestamps cannot be in the future.');
   if (!settings.allowedModes.includes(request.mode))
@@ -83,6 +89,10 @@ export function preflight(rawSettings: unknown, rawRequest: unknown) {
   const simulation = kinds.every((k) => k === 'mock');
   if (!simulation && kinds.includes('mock'))
     fail('MIXED_SIMULATION', 'Mock and live providers cannot share a council.');
+  if (!simulation && agents.some((a) => !a.effort))
+    fail('EFFORT_REQUIRED', 'Live council agents require explicit reasoning effort.');
+  if (request.mode === 'subscription_only' && request.apiBudgetUsd !== 0)
+    fail('API_FORBIDDEN', 'Subscription-only requires zero API budget.');
   if (
     request.mode === 'subscription_only' &&
     (kinds.some((k) => ['openrouter', 'openai-compatible'].includes(k)) || request.useJev)
@@ -90,6 +100,8 @@ export function preflight(rawSettings: unknown, rawRequest: unknown) {
     fail('API_FORBIDDEN', 'Subscription-only forbids external inference, including Jev.');
   if (request.mode === 'api_only' && kinds.includes('codex-local'))
     fail('SUBSCRIPTION_FORBIDDEN', 'API-only forbids subscription inference.');
+  if (!simulation && request.mode !== 'subscription_only' && request.apiBudgetUsd <= 0)
+    fail('BUDGET_REQUIRED', 'API-only and hybrid modes require an explicit positive API budget.');
   if (request.useJev && (!settings.jev.enabled || simulation))
     fail('JEV_DISABLED', 'Jev requires explicit operator enablement and a live council.');
   if (kinds.some((k) => ['openrouter', 'openai-compatible'].includes(k)) || request.useJev) {
@@ -149,13 +161,22 @@ export class Semaphore {
   constructor(private readonly limit: number) {}
   async use<T>(signal: AbortSignal, fn: () => Promise<T>): Promise<T> {
     signal.throwIfAborted();
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       const acquire = () => {
+        signal.removeEventListener('abort', abort);
         this.active++;
         resolve();
       };
+      const abort = () => {
+        const index = this.waiting.indexOf(acquire);
+        if (index >= 0) this.waiting.splice(index, 1);
+        reject(signal.reason);
+      };
       if (this.active < this.limit) acquire();
-      else this.waiting.push(acquire);
+      else {
+        this.waiting.push(acquire);
+        signal.addEventListener('abort', abort, { once: true });
+      }
     });
     try {
       signal.throwIfAborted();

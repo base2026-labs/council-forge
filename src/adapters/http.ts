@@ -1,4 +1,5 @@
-import { fail } from '../policy.ts';
+import { CouncilError, fail } from '../policy.ts';
+import { ProviderResponseError, reportedReceipt } from '../provider.ts';
 export function httpsEndpoint(base: string, suffix: string): URL {
   const url = new URL(base.endsWith('/') ? base : base + '/');
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
@@ -20,12 +21,16 @@ export async function jsonFetch(
   fetcher: typeof fetch = fetch,
 ): Promise<unknown> {
   const response = await fetcher(url, { ...init, redirect: 'error' });
-  if (!response.ok)
-    return fail(
-      `HTTP_${response.status}`,
-      'Provider request failed. Body omitted to avoid leaking private content.',
-    );
-  if (!response.body) return fail('EMPTY_RESPONSE', 'Provider returned no body.');
+  const rejected = !response.ok
+    ? new CouncilError(
+        `HTTP_${response.status}`,
+        'Provider request failed. Body omitted to avoid leaking private content.',
+      )
+    : null;
+  if (!response.body) {
+    if (rejected) throw rejected;
+    return fail('EMPTY_RESPONSE', 'Provider returned no body.');
+  }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -41,5 +46,12 @@ export async function jsonFetch(
     await reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+  } catch (error) {
+    throw rejected ?? error;
+  }
+  if (rejected) throw new ProviderResponseError(rejected, reportedReceipt(raw));
+  return raw;
 }

@@ -1,14 +1,23 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { RequestSchema, Identifier } from './schema.ts';
+import { RequestSchema, Identifier, AgentSchema } from './schema.ts';
 import { preflight, CouncilError } from './policy.ts';
 import { openRuntime, catalogue } from './runtime.ts';
 import { inspectHtml } from './seo.ts';
+import { ROOM_URI, roomHtml } from './room.ts';
+import { createPreset, presetContracts, PresetName } from './presets.ts';
+import { contracts } from './roles.ts';
+import { councilCapabilities } from './capabilities.ts';
+import { EvidencePacketSchema, importEvidencePacket, collectorContracts } from './collectors.ts';
 const runtime = openRuntime();
-const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.1' });
+const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.3' });
 const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value) }],
+  structuredContent:
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : { data: value },
 });
 const safe = async (fn: () => unknown | Promise<unknown>) => {
   try {
@@ -23,6 +32,22 @@ const safe = async (fn: () => unknown | Promise<unknown>) => {
     };
   }
 };
+const configuration = () => ({
+  catalogue: catalogue(runtime.settings),
+  presets: presetContracts(),
+  roles: contracts(),
+  allowedModes: runtime.settings.allowedModes,
+  liveEnabled: runtime.settings.liveEnabled,
+  maxApiBudgetUsd: runtime.settings.maxRunApiUsd,
+  outputLanguage: runtime.settings.outputLanguage,
+  capabilities: councilCapabilities(),
+  collectors: collectorContracts(),
+});
+const savedStatus = (runId: string) => ({
+  run: runtime.store.get(runId),
+  events: runtime.store.events(runId),
+  nativeInvocations: runtime.store.nativeInvocations(runId),
+});
 server.registerTool(
   'council_models',
   {
@@ -52,8 +77,68 @@ server.registerTool(
         maxConcurrency: p.maxConcurrency,
         requestHash: p.requestHash,
         warnings: p.warnings,
+        outputLanguage: p.request.outputLanguage,
+        permissionScope: p.request.permissionScope,
       };
     }),
+);
+server.registerResource(
+  'council-room',
+  ROOM_URI,
+  { mimeType: 'text/html;profile=mcp-app' },
+  async () => ({
+    contents: [
+      {
+        uri: ROOM_URI,
+        mimeType: 'text/html;profile=mcp-app',
+        text: roomHtml(),
+        _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } },
+      },
+    ],
+  }),
+);
+server.registerTool(
+  'council_room',
+  {
+    description:
+      'Open the native Council Room. Configure exact per-role models, effort, counts, billing boundaries, output language and evidence. Live admission remains operator-controlled.',
+    inputSchema: { runId: Identifier.optional() },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    _meta: { ui: { resourceUri: ROOM_URI } },
+  },
+  async ({ runId }) =>
+    text({ ...configuration(), ...(runId ? { savedStatus: savedStatus(runId) } : {}) }),
+);
+server.registerTool(
+  'council_configuration',
+  {
+    description:
+      'Read Council Room configuration without rendering another UI component. No credentials or operator paths.',
+    inputSchema: {},
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async () => text(configuration()),
+);
+server.registerTool(
+  'council_preset',
+  {
+    description:
+      'Construct a preset from explicit per-role selections. Keeps skeptic/verifier/chair and chosen pins. No default models or permission expansion.',
+    inputSchema: { preset: PresetName, selections: z.array(AgentSchema).max(32) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async ({ preset, selections }) =>
+    safe(() => ({ agents: createPreset(preset, selections), permissionScope: 'read_only' })),
+);
+server.registerTool(
+  'council_import_observations',
+  {
+    description:
+      'Import generic observations, bounded source crawl receipts or typed supplied GSC URL Inspection/Search Analytics/source/rendered DOM exports under exact read scope and byte/count/depth bounds. No fetch or inference. Permission and acquisition remain caller assertions.',
+    inputSchema: EvidencePacketSchema,
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async (packet) => safe(() => importEvidencePacket(packet)),
 );
 server.registerTool(
   'council_run',
@@ -77,7 +162,7 @@ server.registerTool(
     inputSchema: { runId: Identifier },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  async ({ runId }) => text({ run: runtime.store.get(runId), events: runtime.store.events(runId) }),
+  async ({ runId }) => text(savedStatus(runId)),
 );
 server.registerTool(
   'council_cancel',

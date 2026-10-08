@@ -12,24 +12,28 @@ not separate model families. Independence of sessions does not eliminate correla
 errors or prove correctness.
 
 The first vertical is technical SEO. The core is domain-neutral. Code review and
-architecture use the same claim/evidence contract; additional presets and tool access
-will be introduced behind separate capability checks.
+architecture use the same claim/evidence contract; presets have explicit role-to-skill contracts. Model tool access remains absent;
+future access needs separate capability checks.
 
 ## Components
 
-1. **Host surfaces:** Codex plugin/skill, stdio MCP and a local planning console.
+1. **Host surfaces:** installed Codex plugin/skills, native MCP Apps Council Room, stdio MCP and a separate offline planning console.
 2. **Policy kernel:** validates billing, registry identities, supported effort,
    instance counts, roles, deadlines, evidence bounds and operator ceilings.
 3. **Jev advisor:** an optional, API-funded decision call over aggregate metadata.
 4. **Council engine:** creates independent proposals, criticism, blind checks and synthesis.
 5. **Provider ports:** mock, OpenRouter, generic compatible API and experimental local Codex.
-6. **Evidence contract:** source type, source identifier, observation time, excerpt and hash.
+6. **Evidence contract:** source type, source identifier, observation time, excerpt, hash and optional scoped read provenance with limitations.
 7. **SQLite journal:** run identity, normalized usage receipts and atomic spend reservations.
 
 Policy decisions are ordinary deterministic code, not instructions an LLM may override.
-There is one process-wide concurrency semaphore per runtime. A directory lock enforces
-one owning runtime per state directory. Separate state directories intentionally do
-not share a limit; distributed quota coordination is not implemented.
+Each live runtime participates in one user-wide SQLite coordinator at the platform's
+local state location. Atomic PID leases enforce at most three simultaneous provider
+calls, including Jev, across different data directories and processes. The lowest active
+requested cap wins. A dead PID can release its lease; PID reuse is conservatively held.
+Waits honor cancellation. API reservations are checked locally and globally before
+dispatch, and unknown exposure survives restarts. A directory lock still enforces one
+owning runtime per result directory. Coordination across users or machines is not implemented.
 
 ## Three billing modes
 
@@ -49,7 +53,7 @@ request less budget than the operator ceiling, never increase it.
 
 ## Agent identity and model catalogue
 
-An agent binds `id`, `role`, `providerId`, exact `model`, optional `effort`, and
+An agent binds `id`, `role`, `providerId`, exact `model`, explicit live `effort`, and
 `instances`. The model registry distinguishes display labels, request IDs, explicitly
 allowed response IDs, supported effort values, dated price metadata and transport.
 
@@ -59,8 +63,9 @@ The local Codex adapter checks `model/list` and supported effort immediately bef
 inference. That catalogue can be cached; a listing is not a guarantee of account
 entitlement. Unavailable models and effort mismatches fail closed.
 
-The alpha registry is operator-managed. Account-specific OAuth catalogue refresh,
-capability probes and a live model picker are planned. A provider reporting a different
+The registry is operator-managed. Native UI selectors preserve configured pins, and
+the subscription adapter checks current model/effort metadata before each call.
+Account-specific hosted OAuth catalogue refresh remains planned. A provider reporting a different
 model is rejected unless its response ID was explicitly registered. Codex model
 rerouting notifications stop the adapter.
 
@@ -120,8 +125,11 @@ measure CWV or establish indexing causality. Empty ALT may be intentional. A JSO
 parse success is not semantic schema validity. These boundaries are returned with the
 result, not hidden in documentation only.
 
-Future collection adapters must produce typed evidence: HTTP response versus source
-HTML versus rendered DOM versus dated GSC observation. Each adapter needs an explicit
+The public HTTPS source collector, explicit bounded robots-aware traversal and observation
+importer preserve typed evidence. See BOUNDED-CRAWL.md for exact scope, conservative
+robots support and source-bound receipts. Traversal is an operator CLI mode, never a
+model tool. Future rendering/GSC/SERP adapters must also distinguish HTTP response, source
+HTML, rendered DOM and dated GSC observations. Each adapter needs an explicit
 read capability, scope, budget, audit provenance and independent acceptance criteria.
 Public web text and tool results are untrusted inputs, never authority to change policy.
 
@@ -158,3 +166,16 @@ Only one Main implementation agent may own a mutating resource in a future execu
 Resource locks must be narrow: repository/worktree, site-global configuration, exact
 object or a shared browser profile. Two different sites do not inherently conflict.
 Neither a model selection nor Jev's confidence can remove an authorization gate.
+
+## Native role and language surfaces
+
+The native MCP Apps room and CLI expose three read-only presets and thirteen explicit
+role-to-skill contracts (ROLE-CONTRACTS.md). User-selected models, effort and counts remain
+visible. There is no default alias substitution or implementation-write tool. Language
+is a BCP 47 configuration/request field passed to every phase and included in completed,
+held and needs-input artifacts. Evidence hashes cover the raw UTF-8 excerpt bytes.
+
+Portable native admission uses operator-owned PLUGIN_DATA files and an exact config hash;
+CLI admission retains the environment gate. Neither UI nor model arguments can enable
+live access. A held/uncertain room result remains locked against another run. Hosted UI
+registration and native embedded-rendering acceptance remain separate gates.

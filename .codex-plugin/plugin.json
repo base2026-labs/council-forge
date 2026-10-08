@@ -1,6 +1,6 @@
 {
   "name": "council-forge",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.3",
   "description": "Evidence-first local agent councils.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

@@ -1,6 +1,6 @@
 # Validation report — 2026-10-07
 
-## Executed on macOS arm64
+## Historical foundation validation on macOS arm64
 
 Environment: Node.js 26.3.1, npm 11.16.0, TypeScript 5.9.3.
 
@@ -17,7 +17,7 @@ The Host-header test uses Node's HTTP client, not Fetch, because this runtime's 
 
 Raw successful command output: [macOS check](validation/macos-check.txt).
 
-## Not executed / not established
+## Not executed by the historical bootstrap
 
 No live model inference, paid Jev call, real website audit, live subscription smoke test,
 native ChatGPT/Codex plugin installation, widget registration, directory submission,
@@ -42,3 +42,181 @@ failure. No account settings or billing changes were made. Re-running unchanged 
 was avoided. The workflow is retained for execution when the account restriction is resolved.
 
 These receipt/documentation additions do not change the tested runtime source.
+
+## Native candidate validation on Linux
+
+Candidate version: `0.1.0-alpha.2`; branch `offlinerpsy/agr45-live-council`, based on audited
+main `bb12eda78b667f27d6f4e13fac803a78cc687157`. Node.js 22.19.0, Codex CLI 0.160.0.
+The current implementation suite has **83 passed, 0 failed, 0 skipped** locally. Lint,
+typecheck, compilation, formatting and offline demo commands are captured by the execution
+worker against its final candidate head; these are separate from hosted CI.
+
+Coverage adds exact live effort requirements; three-mode negative controls; thirteen
+role contracts and mandatory preset reviews; scoped observations; raw evidence hashes;
+BCP 47 and Russian/Japanese/Arabic fixtures; shared local lease/budget coordination;
+UNKNOWN retention; cancellation before a queued call dispatches; actual native room
+controller execution against a synthetic MCP Apps bridge; and attempted mutation denial.
+All simulated/provider-fixture tests are explicitly synthetic and prove no live entitlement.
+
+### Installed native plugin and capability boundary
+
+The official plugin CLI installed the local portable package in a task-local host. Hash
+readback checked cached manifest, compiled server/engine/adapter and UI against the source.
+The official app-server discovered ten MCP tools and fourteen skills, expanded the cached
+root, invoked council_room and denied five attempted mutation tool names: repository
+write, website publish, GSC mutation, Linear update and shell execution. MCP Apps HTML
+resource and UI metadata were verified. No mutation tools are registered.
+
+For subscription isolation, effective process overrides disabled inherited integrations
+without changing the authenticated profile or copying auth. Readback showed zero callable
+MCP tools/resources/apps. A native Linux read-only sandbox write attempt failed EROFS and
+created no sentinel. The council model surface exposes no tool dispatcher, forbids grants,
+and stops on observed tools/rerouting. This does not establish adversarial OS isolation
+or platform-wide security certification.
+
+### Live attempt remains held
+
+The tested live source head was `41c5db14f5faad074fd7c7338aab8ffef0f86c3a`. Exact choices:
+GPT-6.1 Sol MAX for SEO/skeptic/chair and GPT-6 Sol MAX for evidence hunter/blind verifier,
+instance count one each, subscription_only, Russian output, five planned calls,
+concurrency one, read_only, Jev disabled and API budget zero. The input was a non-private
+supplied canonical/robots HTML example, not a real GSC/Google observation.
+
+The first host call failed UNKNOWN_PROVIDER before a run existed because parent variables
+were not forwarded. The native PLUGIN_DATA admission path corrected this. The next
+request was refused by an obsolete readOnly.access field; passive invalid-thread protocol
+validation independently reproduced an invalid-request rejection before turn processing.
+The corrected request sent two independent proposal attempts. Both ended CODEX_INCOMPLETE
+with dispatched=true, resultKnown=false and null usage. No completed provider response or
+skeptic/verifier/chair phase is claimed. There was **no retry of that uncertain operation**.
+
+An acceptance-script reporting bug used only successful response IDs for its top-level
+dispatch boolean; per-role diagnostics are authoritative. The original raw receipt is
+preserved. Future script receipts count attempted dispatch separately from accepted turns
+and completed outcomes. Later code adds safe error enums, thread attestation, strict native
+JSON schemas with required nullable objection IDs, evidence on held results and UI replay
+locking. These later changes have fixture tests; they were not another live inference test.
+
+### Collection and visual checks
+
+One authorized public HTTPS GET to https://example.com/ returned HTTP 200, 577 bytes,
+text/html, source title Example Domain and response SHA-256
+`25ddf2c883e0d1958ea971d279a7e4f0fd446724ee3db7db19dadabd4a62e484`.
+The scoped collector returned dated provenance and source-only limitations, with no
+inference, key, cookie, authorization header or paid API call. This is not a website crawl,
+rendered/GSC audit, indexation observation or causality experiment.
+
+Supported Chrome CUA rendered the local room component at desktop and 390x844 mobile
+sizes. Horizontal overflow was zero; Japanese input was readable. The preview explicitly
+has no native bridge/run. Embedded Codex/ChatGPT desktop rendering remains unverified.
+
+### Hosted CI and remaining release gates
+
+Audited-main CI run 37608118807 failed before steps, with job runner ID 0 and an empty
+step list. The earlier 58-test history is not fresh CI evidence. The candidate adds lint
+and a Linux/macOS/Windows matrix, but configured coverage is not executed coverage.
+No account billing, security controls, protection or permissions were changed. The final
+PR CI readback must be reported accurately by the execution handoff, without repeated jobs.
+
+Remaining: completed subscription council; paid OpenRouter/Jev pilots and invoice checks;
+embedded/native platform acceptance; GSC/rendered/SERP connectors; adaptive/equal-budget
+evaluation; hosted authentication/retention/security. Separate independent review remains
+controller-owned. No merge, release, deployment or directory submission is authorized.
+
+## Offline accounting correction after independent review
+
+The independent review of candidate `b9cc92b7b91da6e499b1f04c3eb362c7dd787553`
+found CF-R1 (lost known charges on rejected responses) and CF-R2 (queued dispatch after
+overrun). Both exact synthetic probes reproduced in a separate normal checkout: the
+incomplete fixture reported USD 1.50 but retained only USD 0.01194 in each ledger; the
+serial overrun fixture dispatched two USD 0.75 calls after the first settlement failed.
+
+The correction separates sanitized response accounting from semantic acceptance and
+latches terminal accounting failure inside settlement. Both ledgers commit known charges
+for rejected OpenRouter/Jev responses. Queued work stops; already dispatched outcomes
+settle and retain receipts. The same serial probes now dispatch exactly one fixture call,
+record USD 0.75 in each ledger, preserve its identity/usage, and return HOLD/COST_OVERRUN.
+Identical replay dispatches no new call.
+
+New offline regressions cover incomplete/tool/schema/model/output/HTTP rejection, invalid
+individual usage fields, zero and unknown cost, Jev schema/choice/model/distribution/HTTP
+rejection and overrun, serial admission, concurrent settlement, accounting-error priority,
+cancellation, process interruption and no replay. They use synthetic transports and an
+isolated Node fixture process. No paid or subscription model turn is used.
+
+The correction worker records exact-head lint, typecheck, full tests, format and demo
+commands and results separately from hosted CI. The earlier 83-test candidate and installed
+plugin remain historical evidence. This correction does not reinstall the plugin or claim
+a live council, embedded-host acceptance, invoice verification, cross-platform execution,
+release or completed #1–#5 backlog. Existing subscription outcomes stay UNKNOWN until an
+authoritative receipt can be correlated to their preserved invocation identities; live
+admission remains revoked. The controller owns the next independent review.
+
+## Durable native receipts — offline continuation, 2026-10-08
+
+Accepted predecessor `c45e46922e96cff90abf1d756ba77625db13491c` has independent bounded
+CF-R1/CF-R2 PASS with 109 tests. This continuation adds synchronous sanitized native
+lifecycle receipts and exact JSON-RPC/thread/turn correlation. The first 15 regressions
+failed against that predecessor before source changes. Expanded executable fake-server
+coverage and process-kill/restart cases are detailed in [NATIVE-RECEIPTS.md](NATIVE-RECEIPTS.md).
+The worker records focused checks plus lint, typecheck, full tests, formatting and the
+explicit offline demo on the final exact candidate. Existing accounting/concurrency,
+role/language/read-only and idempotency tests remain required.
+
+Existing original UNKNOWN subscription records and available local service metadata were
+inspected read only. No correlated historical thread/turn/outcome/usage receipt was found;
+the stored results remain unchanged and live admission remains absent. The new schema
+cannot manufacture old identifiers. No live request, uncertain-operation replay, paid
+inference, plugin reinstall, manual CI rerun or account change accompanies this work.
+Hosted CI outcome must be read back separately; local checks do not establish hosted CI
+success. Independent review remains controller-owned, and #1–#5 remain open.
+
+## Typed offline SEO evidence continuation — 2026-10-08
+
+Built on independently accepted native-receipt head
+`a8c19e7308594fc64383e94b6df5164a96b5a9a6` (133 tests). The first five new typed-export
+regressions failed on that predecessor before implementing the adapters. The continuation
+adds 50 meaningful regressions: provider/partial/error/aggregate exports, scope/property
+boundaries, freshness and canonical disagreement, source/rendered/JSON-LD/template
+observations, Unicode/injection, identity/provenance conflicts, malformed data and limits,
+CLI/MCP dispatch denial, generic import compatibility, role/receipt and inert Room flow.
+The current full suite contains **183 tests**, including all predecessor cases.
+
+Focused checks, lint, typecheck, full tests, format and offline demo must pass at the final
+exact candidate head, recorded by the task worker rather than a moving branch or historical
+CI. Guarded CLI/MCP tests disable HTTP, HTTPS, DNS, sockets and provider subprocess dispatch;
+import still succeeds. Fake providers/MCP/Room fixtures are offline validation, not live
+service or embedded-host acceptance. No provider/model pilot, GSC API/browser/SEO collection,
+paid call or historical UNKNOWN replay is part of this slice. Existing hosted CI is read
+accurately after the normal branch update, without manual rerun; local success is not
+hosted CI green. See [SEO evidence contract and M3 matrix](SEO-EVIDENCE.md).
+
+## Bounded crawler regressions — 2026-10-08
+
+The crawler continuation adds deterministic guarded fake-transport and fake DNS/HTTPS
+fixtures for robots refusal/unsupported matching, exact scope, page/robots redirects,
+cycles, every finite budget, source links/base/templates, UTF-8/status/content errors,
+request/total cancellation, shared leases and identity/provenance reimport. CLI/MCP
+imports retain ten tools, zero model capabilities and immutable configuration. All 221
+predecessor tests and the eight exact CF-E1/E2 assertions remain required. Local fake
+fixtures are not live crawl acceptance or an accuracy benchmark; exact-head counts and
+commands belong to the worker report, alongside hosted CI readback.
+
+## Native alpha.3 continuation — 2026-10-08
+
+New focused regressions first reproduce missing receipt reopening and terminal-knowledge
+mapping against accepted head `8799797148acbfb9225cc656b80fca292af31731`. They cover
+read-only Room recovery, foreign-result locking, namespace/admission binding and exact
+pre-dispatch run/request scope. Complete native protocol fixture councils survive
+process death after durable result commit but before delivery in en/ru/ja/ar; all five
+terminal IDs/usage receipts and full decision phases persist without another transport.
+Real stdio MCP reopening returns the saved multilingual result with live execution off.
+
+The task worker records focused and full exact-head quality checks, protected predecessor
+regressions, installed file hashes, official metadata-only preflight, actual native tool
+mutation denials and supported embedded-host attempts. Those operations must be reported
+separately from component previews and fake councils. No live inference is authorized
+until the exact operator admission and historical exposure condition are established.
+Historical UNKNOWN database bytes/reservations/reports and failed-before-steps CI remain
+unchanged. Automatic final-head CI outcome is read back without rerun; offline success
+is not green hosted CI or whole-issue completion.

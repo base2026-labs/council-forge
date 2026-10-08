@@ -1,0 +1,23 @@
+{
+  "mode": "bounded_crawl",
+  "crawlId": "offline-scope-hold",
+  "collector": "operator-public",
+  "permission": "read",
+  "permissionReceipt": "refusal-fixture-no-robots-authority",
+  "resources": ["https://example.test/"],
+  "seeds": ["https://example.test/"],
+  "maxObservations": 20,
+  "maxRequests": 5,
+  "maxPages": 2,
+  "maxDepth": 1,
+  "maxRedirects": 0,
+  "maxBytes": 20000,
+  "maxResponseBytes": 10000,
+  "maxEvidenceBytes": 100000,
+  "timeoutMs": 1000,
+  "totalTimeoutMs": 5000,
+  "maxDomNodes": 5000,
+  "maxDomDepth": 128,
+  "maxLinksPerPage": 20,
+  "robotsMaxAgeMs": 60000
+}

@@ -1,15 +1,47 @@
 import { z } from 'zod';
+import { TypedObservationSchema } from './evidence-schema.ts';
+import { CrawlObservationSchema } from './crawl-schema.ts';
 export const Identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/);
 export const Mode = z.enum(['subscription_only', 'api_only', 'hybrid']);
 export const Role = z.enum([
   'architect',
   'technical_seo',
   'researcher',
+  'geo_aeo',
+  'indexation',
+  'serp',
+  'schema',
+  'content',
+  'evidence_hunter',
+  'implementation',
   'skeptic',
   'verifier',
   'chair',
 ]);
 export const Effort = z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+export const Language = z
+  .string()
+  .min(2)
+  .max(35)
+  .refine((value) => {
+    try {
+      return Intl.getCanonicalLocales(value).length === 1;
+    } catch {
+      return false;
+    }
+  }, 'Use a valid BCP 47 output language tag.');
+export const EvidenceKind = z.enum([
+  'source_html',
+  'rendered_html',
+  'gsc',
+  'crawl',
+  'document',
+  'test',
+  'diff',
+  'provider_metric',
+  'serp',
+  'hypothesis',
+]);
 export const ModelSchema = z
   .object({
     id: z.string().min(1).max(180),
@@ -53,12 +85,13 @@ export const SettingsSchema = z
     providers: z.array(ProviderSchema).min(1).max(20),
     allowedModes: z.array(Mode).min(1).default(['subscription_only']),
     maxAgents: z.number().int().min(4).max(32).default(16),
-    maxConcurrency: z.number().int().min(1).max(10).default(3),
+    maxConcurrency: z.number().int().min(1).max(3).default(3),
     maxCallsPerRun: z.number().int().min(4).max(64).default(24),
     apiLifetimeLimitUsd: z.number().finite().nonnegative().default(0),
     maxRunApiUsd: z.number().finite().nonnegative().default(0),
     maxPriceAgeHours: z.number().positive().max(720).default(168),
     liveEnabled: z.boolean().default(false),
+    outputLanguage: Language.default('en'),
     jev: JevSchema.default({
       enabled: false,
       model: 'typesafe/jev-1.13-20260917',
@@ -83,8 +116,19 @@ export const EvidenceSchema = z
     id: Identifier,
     source: z.string().min(1).max(500),
     observedAt: z.iso.datetime(),
-    kind: z.enum(['source_html', 'rendered_html', 'gsc', 'crawl', 'document', 'test', 'diff']),
+    kind: EvidenceKind,
     excerpt: z.string().min(1).max(20000),
+    observation: z.union([TypedObservationSchema, CrawlObservationSchema]).optional(),
+    provenance: z
+      .object({
+        collector: Identifier,
+        scope: z.string().min(1).max(500),
+        permission: z.literal('read'),
+        sourceReported: z.boolean(),
+        limitations: z.array(z.string().min(1).max(2000)).max(20),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export const RequestSchema = z
@@ -99,6 +143,8 @@ export const RequestSchema = z
     maxOutputTokens: z.number().int().min(256).max(4096).default(1536),
     timeoutMs: z.number().int().min(1000).max(600000).default(120000),
     useJev: z.boolean().default(false),
+    outputLanguage: Language.optional(),
+    permissionScope: z.literal('read_only').default('read_only'),
   })
   .strict();
 export const ClaimSchema = z
@@ -108,7 +154,7 @@ export const ObjectionSchema = z
   .object({
     text: z.string().min(1).max(2000),
     severity: z.enum(['minor', 'major', 'critical']),
-    claimId: Identifier.optional(),
+    claimId: Identifier.nullish(),
   })
   .strict();
 export const OpinionSchema = z

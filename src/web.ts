@@ -7,6 +7,7 @@ import { preflight } from './policy.ts';
 import { demoSettings, demoRequest } from './demo.ts';
 import { Store } from './store.ts';
 import { loadSettings, createEngine, catalogue } from './runtime.ts';
+import { roomHtml } from './room.ts';
 const settings = loadSettings(),
   csrf = randomUUID(),
   port = Number(process.env.PORT ?? 4317),
@@ -38,6 +39,7 @@ const server = createServer(async (req, res) => {
         catalogue: catalogue(settings),
         request: demoRequest('ui-' + randomUUID()),
         liveEnabled: false,
+        outputLanguage: settings.outputLanguage,
         allowedModes: settings.allowedModes,
       });
       return;
@@ -85,6 +87,15 @@ const server = createServer(async (req, res) => {
       '/app.js': ['app.js', 'text/javascript'],
       '/style.css': ['style.css', 'text/css'],
     };
+    if (req.method === 'GET' && req.url === '/native-preview') {
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      );
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(roomHtml());
+      return;
+    }
     const target = files[req.url ?? ''];
     if (req.method !== 'GET' || !target) {
       respond(404, { error: 'NOT_FOUND' });
