@@ -86,6 +86,7 @@ export class CouncilEngine {
     private providers: Map<string, Provider>,
     private router?: Router,
     private global?: GlobalCoordinator,
+    private nativeAdmission?: { runId: string; requestSha256: string },
   ) {
     this.semaphore = new Semaphore(settings.maxConcurrency);
   }
@@ -131,6 +132,16 @@ export class CouncilEngine {
       };
     if (!p.simulation && !this.settings.liveEnabled)
       fail('LIVE_DISABLED', 'Live inference is disabled by the operator.');
+    if (
+      !p.simulation &&
+      this.nativeAdmission &&
+      (r.runId !== this.nativeAdmission.runId ||
+        p.requestHash !== this.nativeAdmission.requestSha256)
+    )
+      fail(
+        'NATIVE_ADMISSION_SCOPE',
+        'Native admission is bound to one exact run and normalized request.',
+      );
     const previous = this.store.begin(r.runId, p.requestHash);
     if (previous)
       return previous.result ?? { runId: r.runId, state: previous.state, replayed: false };

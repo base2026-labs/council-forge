@@ -323,7 +323,7 @@ export class CodexLocalProvider implements Provider {
           clientInfo: {
             name: 'council_forge',
             title: 'Council Forge local OSS',
-            version: '0.1.0-alpha.2',
+            version: '0.1.0-alpha.3',
           },
         });
         rpc.notify('initialized', {});
@@ -741,7 +741,9 @@ export class CodexLocalProvider implements Provider {
         inferenceDispatched: native.inferenceDispatched,
         turnAccepted,
         threadAttestation,
-        resultKnown: !native.inferenceDispatched,
+        resultKnown:
+          !native.inferenceDispatched ||
+          (native.state === 'terminal' && native.outcome !== 'unknown'),
       };
       throw rejected;
     } finally {

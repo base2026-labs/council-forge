@@ -14,7 +14,7 @@ No issue is closed merely because a draft PR or offline fixture exists.
 
 ## Current milestone
 
-`0.1.0-alpha.2` is a local native plugin candidate. Installation and native MCP invocation
+`0.1.0-alpha.3` is the current local native plugin candidate. Installation and native MCP invocation
 are verified on Codex CLI 0.160.0/Linux. The component fits desktop/mobile viewports.
 A subscription attempt is held with incomplete proposal turns and uncertain usage; no
 complete council is claimed. Paid inference, OAuth, broader access and another uncertain
@@ -49,3 +49,14 @@ not a completed live collector or accuracy benchmark. M3 and AGR-45 remain open.
 fake transports. Source links/redirects and conservative robots decisions remain distinct
 from user authority and provider indexation reports. No crawler/model pilot is part of
 this slice. Live collection and original M1–M5 acceptance remain open.
+
+## M1/M2 native deliverability continuation — 2026-10-08
+
+The current package adds read-only saved-run reopening, correlated terminal knowledge
+and operator-controlled namespaced state with an exact run/request admission. A complete
+five-role protocol council survives lost delivery/restart in four offline language
+fixtures without replay. This extends the accepted crawler/typed-evidence/accounting
+work rather than replacing it. The executor must verify the actual updated installation,
+record supported UI attempts and provide a distinct acceptance preflight. Live admission
+remains revoked; unresolved old exposure and embedded/live acceptance require the
+existing coordinator's concrete next action. No M1–M5 issue is closed by offline checks.

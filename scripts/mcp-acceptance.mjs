@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 const [installedRoot, dataDirectory, requestPath] = process.argv.slice(2);
 if (!installedRoot || !dataDirectory)
   throw new Error('Usage: mcp-acceptance.mjs <installed-root> <state-dir> [request-path]');
-const client = new Client({ name: 'council_forge_install_acceptance', version: '0.1.0-alpha.2' });
+const client = new Client({ name: 'council_forge_install_acceptance', version: '0.1.0-alpha.3' });
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [join(installedRoot, 'dist/mcp.js')],

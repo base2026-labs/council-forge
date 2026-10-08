@@ -4,7 +4,9 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-const [home, marketplace, requestPath] = process.argv.slice(2);
+const [home, marketplace, requestPath, option] = process.argv.slice(2);
+if (option !== undefined && option !== '--plan-only') throw new Error('Unsupported smoke option.');
+const planOnly = option === '--plan-only';
 if (!home || !marketplace)
   throw new Error('Usage: plugin-smoke.mjs <installed-codex-home> <marketplace-path>');
 const child = spawn('codex', ['app-server', '--stdio'], {
@@ -76,7 +78,7 @@ async function inspect(method, params, timeout) {
 }
 try {
   receipt.initialize = await inspect('initialize', {
-    clientInfo: { name: 'council_forge_plugin_acceptance', version: '0.1.0-alpha.2' },
+    clientInfo: { name: 'council_forge_plugin_acceptance', version: '0.1.0-alpha.3' },
     capabilities: { experimentalApi: true },
   });
   child.stdin.write(JSON.stringify({ method: 'initialized' }) + '\n');
@@ -150,37 +152,47 @@ try {
     });
     if (receipt.plan.isError)
       throw new Error('Council admission failed before inference; no run submitted.');
-    receipt.inferenceAttemptRequested = true;
-    receipt.run = await inspect(
-      'mcpServer/tool/call',
-      {
+    if (planOnly) {
+      receipt.planOnly = true;
+      receipt.configuration = await inspect('mcpServer/tool/call', {
         threadId: thread.thread.id,
         server: 'council-forge',
-        tool: 'council_run',
-        arguments: { request },
-      },
-      request.timeoutMs + 30000,
-    );
-    receipt.status = await inspect('mcpServer/tool/call', {
-      threadId: thread.thread.id,
-      server: 'council-forge',
-      tool: 'council_status',
-      arguments: { runId: request.runId },
-    });
-    const output = JSON.parse(receipt.run.content[0].text);
-    receipt.inferenceDispatched =
-      output.receipts?.some(
-        (r) =>
-          r.diagnostic?.inferenceDispatched === true ||
-          (r.requestId && r.billing === 'subscription'),
-      ) ?? false;
-    receipt.providerReceipts = output.receipts;
-    receipt.liveCouncilAccepted = output.simulation === false && output.state === 'completed';
-    receipt.modelTurnCreated =
-      output.receipts?.some(
-        (r) => r.diagnostic?.turnAccepted === true || (r.requestId && r.billing === 'subscription'),
-      ) ?? false;
-    receipt.inferenceOutcomeKnown = output.state === 'completed';
+        tool: 'council_configuration',
+        arguments: {},
+      });
+    } else {
+      receipt.inferenceAttemptRequested = true;
+      receipt.run = await inspect(
+        'mcpServer/tool/call',
+        {
+          threadId: thread.thread.id,
+          server: 'council-forge',
+          tool: 'council_run',
+          arguments: { request },
+        },
+        request.timeoutMs + 30000,
+      );
+      receipt.status = await inspect('mcpServer/tool/call', {
+        threadId: thread.thread.id,
+        server: 'council-forge',
+        tool: 'council_status',
+        arguments: { runId: request.runId },
+      });
+      const output = JSON.parse(receipt.run.content[0].text);
+      receipt.inferenceDispatched =
+        output.receipts?.some(
+          (r) =>
+            r.diagnostic?.inferenceDispatched === true ||
+            r.nativeReceipt?.inferenceDispatched === true,
+        ) ?? false;
+      receipt.providerReceipts = output.receipts;
+      receipt.liveCouncilAccepted = output.simulation === false && output.state === 'completed';
+      receipt.modelTurnCreated =
+        output.receipts?.some(
+          (r) => r.diagnostic?.turnAccepted === true || Boolean(r.nativeReceipt?.turnId),
+        ) ?? false;
+      receipt.inferenceOutcomeKnown = output.state === 'completed';
+    }
   }
   if (receipt.plugin?.plugin?.root) {
     const manifest = readFileSync(receipt.plugin.plugin.root + '/plugin.json');

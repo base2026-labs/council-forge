@@ -5,16 +5,17 @@ import { readFileSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 const root = process.env.CODEX_HOME;
 const mode = readFileSync(join(root, 'fixture-mode'), 'utf8');
+let threadId = 'native-thread',
+  turnId = 'native-turn';
 const send = (message) => process.stdout.write(JSON.stringify(message) + '\n');
-const event = (method, params) =>
-  send({ method, params: { threadId: 'native-thread', turnId: 'native-turn', ...params } });
+const event = (method, params) => send({ method, params: { threadId, turnId, ...params } });
 const item = (text = 'correct', params = {}) =>
   event('item/completed', {
     item: { id: 'answer', type: 'agentMessage', phase: 'final_answer', text },
     ...params,
   });
 const terminal = (status = 'completed', params = {}) =>
-  event('turn/completed', { turn: { id: 'native-turn', status, items: [] }, ...params });
+  event('turn/completed', { turn: { id: turnId, status, items: [] }, ...params });
 const usage = () =>
   event('thread/tokenUsage/updated', {
     tokenUsage: {
@@ -56,16 +57,29 @@ lines.on('line', (line) => {
       ok({
         data: [
           { model: 'fixture-model', supportedReasoningEfforts: [{ reasoningEffort: 'high' }] },
+          ...(mode === 'council-success'
+            ? ['gpt-6.1-sol', 'gpt-6-sol'].map((model) => ({
+                model,
+                supportedReasoningEfforts: [{ reasoningEffort: 'max' }],
+              }))
+            : []),
         ],
         nextCursor: null,
       });
       break;
     case 'thread/start':
+      if (mode === 'council-success') {
+        appendFileSync(join(root, 'threads'), '1\n');
+        const sequence = readFileSync(join(root, 'threads'), 'utf8').trim().split('\n').length;
+        threadId = `fixture-thread-${sequence}`;
+        turnId = `fixture-turn-${sequence}`;
+      }
       ok({
-        thread: { id: 'native-thread', modelProvider: 'openai' },
-        model: 'fixture-model',
+        thread: { id: threadId, modelProvider: 'openai' },
+        model: mode === 'council-success' ? q.params.model : 'fixture-model',
         modelProvider: 'openai',
-        reasoningEffort: 'high',
+        reasoningEffort:
+          mode === 'council-success' ? q.params.config.model_reasoning_effort : 'high',
         approvalPolicy: 'never',
         sandbox: { type: 'readOnly', networkAccess: false },
         serviceTier: 'default',
@@ -86,7 +100,7 @@ lines.on('line', (line) => {
       const ack = () =>
         ok({
           turn: {
-            id: mode === 'missing-turn-id' ? undefined : 'native-turn',
+            id: mode === 'missing-turn-id' ? undefined : turnId,
             status: mode === 'ack-completed-only' ? 'completed' : 'inProgress',
             items: [],
           },
@@ -101,6 +115,39 @@ lines.on('line', (line) => {
         break;
       }
       ack();
+      if (mode === 'council-success') {
+        const prompt = q.params.input[0].text;
+        const supplied = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1)).untrusted_data;
+        const properties = q.params.outputSchema.properties;
+        const note = prompt.includes('output language "ja"')
+          ? 'オフライン証拠'
+          : prompt.includes('output language "ar"')
+            ? 'دليل دون اتصال'
+            : prompt.includes('output language "ru"')
+              ? 'Офлайн доказательство'
+              : 'Offline evidence';
+        const answer = properties.checks
+          ? {
+              checks: supplied.claims.map((c) => ({
+                claimId: c.id,
+                verdict: 'supported',
+                evidenceIds: c.evidenceIds,
+                note,
+              })),
+              limitations: ['Offline protocol fixture only'],
+            }
+          : properties.recommendation
+            ? { recommendation: note, reasons: [note], nextActions: [] }
+            : {
+                summary: note,
+                claims: [{ text: note, evidenceIds: [supplied.evidence[0].id] }],
+                objections: [],
+              };
+        item(JSON.stringify(answer));
+        usage();
+        terminal();
+        break;
+      }
       if (mode === 'ack-completed-only') {
         lines.close();
         break;

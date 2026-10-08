@@ -201,3 +201,22 @@ imports retain ten tools, zero model capabilities and immutable configuration. A
 predecessor tests and the eight exact CF-E1/E2 assertions remain required. Local fake
 fixtures are not live crawl acceptance or an accuracy benchmark; exact-head counts and
 commands belong to the worker report, alongside hosted CI readback.
+
+## Native alpha.3 continuation — 2026-10-08
+
+New focused regressions first reproduce missing receipt reopening and terminal-knowledge
+mapping against accepted head `8799797148acbfb9225cc656b80fca292af31731`. They cover
+read-only Room recovery, foreign-result locking, namespace/admission binding and exact
+pre-dispatch run/request scope. Complete native protocol fixture councils survive
+process death after durable result commit but before delivery in en/ru/ja/ar; all five
+terminal IDs/usage receipts and full decision phases persist without another transport.
+Real stdio MCP reopening returns the saved multilingual result with live execution off.
+
+The task worker records focused and full exact-head quality checks, protected predecessor
+regressions, installed file hashes, official metadata-only preflight, actual native tool
+mutation denials and supported embedded-host attempts. Those operations must be reported
+separately from component previews and fake councils. No live inference is authorized
+until the exact operator admission and historical exposure condition are established.
+Historical UNKNOWN database bytes/reservations/reports and failed-before-steps CI remain
+unchanged. Automatic final-head CI outcome is read back without rerun; offline success
+is not green hosted CI or whole-issue completion.

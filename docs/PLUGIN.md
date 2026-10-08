@@ -78,3 +78,42 @@ Local installation, GitHub distribution, npm publication and public plugin-direc
 submission are different channels. ChatGPT web requires a reachable authenticated HTTPS
 MCP service and the appropriate registration/review. No remote service, OAuth deployment,
 security permission change or public-directory publication is included in this candidate.
+
+## Native continuation: version 0.1.0-alpha.3
+
+The current package adds receipt reopening and a bounded native admission. In an installed
+host call `council_room` with `{}` to compose, or with `{"runId":"<exact saved ID>"}`
+to reopen a receipt. The Room's **Read saved receipt** control calls only `council_status`.
+It never calls `council_run` to recover. Completed decisions retain their language,
+proposals, review phases and native receipts. Interrupted/held/running records stay HOLD
+and cannot be silently replaced by a different saved result. Keep the run ID shown before
+dispatch; no private evidence or credentials are stored in browser storage.
+
+An operator may use `PLUGIN_DATA/runtime.local.json` with
+`{"stateNamespace":"<lowercase slug>"}` to select `PLUGIN_DATA/runs-<slug>`. This
+explicit choice creates a separate result directory; it does not migrate, settle, delete
+or reset older state. The default remains `PLUGIN_DATA/runs`. A new namespace is useful
+when historical databases must remain byte-identical. It is not a way to disregard old
+UNKNOWN exposure. The shared global coordinator still applies.
+
+For a namespaced native runtime, admission additionally requires `runtimeSha256`,
+`runId` and `requestSha256`: hashes of the exact runtime file and the **normalized**
+request returned by `council_plan`. A changed namespace/config/request or different run
+ID is refused before any provider dispatch. The gate is a trusted operator file; UI
+arguments cannot create it. Legacy non-namespaced admission remains compatible. Remove
+admission and restart to disable live calls. An operator must separately reconcile or
+explicitly retain historical uncertain exposure before authorizing a distinct acceptance.
+
+The existing official app-server smoke has an explicit non-inference preflight:
+
+```sh
+node scripts/plugin-smoke.mjs <installed-codex-home> <marketplace-path> <request-json> --plan-only
+```
+
+This inspects discovery, an ephemeral host session, room invocation, mutation denials
+and the exact plan. It never calls `turn/start` or `council_run`. Neither this CLI
+operation nor `/native-preview` proves embedded rendering. ChatGPT needs an existing
+reachable registered MCP service; a local stdio package cannot be mounted by a web
+directory search. See [official UI guidance](https://developers.openai.com/plugins/build/chatgpt-ui).
+The current execution records the exact available host/session and remaining gates in
+its coordinator preflight package. No live admission is shipped by the repository.

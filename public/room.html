@@ -90,6 +90,17 @@
       </section>
       <section aria-labelledby="record-title">
         <h2 id="record-title">Decision record</h2>
+        <label
+          >Saved run ID<input
+            id="saved-run-id"
+            maxlength="120"
+            placeholder="Paste the exact run ID to read its receipt"
+        /></label>
+        <button id="read-receipt" disabled>Read saved receipt</button>
+        <p class="notice">
+          Reading a receipt never starts or resumes a provider turn. Keep the run ID if the host
+          disconnects.
+        </p>
         <p id="state" aria-live="polite">No run yet.</p>
         <div id="progress"></div>
         <div id="recommendation" dir="auto"></div>

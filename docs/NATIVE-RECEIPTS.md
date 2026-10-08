@@ -88,3 +88,21 @@ These processes are fixtures, not Codex model sessions. Linux execution does not
 Windows/macOS native process behavior. Live/embedded-host/multilingual acceptance, original
 UNKNOWN reconciliation, hosted CI availability and the existing #1–#5 criteria stay open.
 The existing controller owns independent review. Live admission remains revoked.
+
+## Terminal knowledge and saved decisions
+
+A correlated `completed`, `failed` or `interrupted` terminal establishes the native
+outcome, even when the output is empty or unusable. Diagnostic `resultKnown` now reflects
+that distinction; it does not mean the council accepted the output or that subscription
+cost is known. Acknowledgement/partial output/transport loss alone remain UNKNOWN.
+Historical receipts are not reclassified or backfilled.
+
+`council_status` now returns the sanitized native-invocation snapshots beside the saved
+run and event journal. `council_room({runId})` returns this same packet for UI reopening.
+Executable offline fixtures complete two proposals, skeptic, blind verifier and chair
+with exact heterogeneous pins. Killing the result consumer after durable completion but
+before host delivery, reopening and same-ID invocation preserve the full decision and
+five terminal/usage receipts without another dispatch. English, Russian, Japanese and
+Arabic outputs cover this delivery-loss case. Existing pre-dispatch/acknowledgement/
+terminal-before-acceptance crash fixtures remain mandatory. These are offline protocol
+fixtures, not live provider acceptance.

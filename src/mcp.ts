@@ -11,7 +11,7 @@ import { contracts } from './roles.ts';
 import { councilCapabilities } from './capabilities.ts';
 import { EvidencePacketSchema, importEvidencePacket, collectorContracts } from './collectors.ts';
 const runtime = openRuntime();
-const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.2' });
+const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.3' });
 const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value) }],
   structuredContent:
@@ -42,6 +42,11 @@ const configuration = () => ({
   outputLanguage: runtime.settings.outputLanguage,
   capabilities: councilCapabilities(),
   collectors: collectorContracts(),
+});
+const savedStatus = (runId: string) => ({
+  run: runtime.store.get(runId),
+  events: runtime.store.events(runId),
+  nativeInvocations: runtime.store.nativeInvocations(runId),
 });
 server.registerTool(
   'council_models',
@@ -97,11 +102,12 @@ server.registerTool(
   {
     description:
       'Open the native Council Room. Configure exact per-role models, effort, counts, billing boundaries, output language and evidence. Live admission remains operator-controlled.',
-    inputSchema: {},
+    inputSchema: { runId: Identifier.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
     _meta: { ui: { resourceUri: ROOM_URI } },
   },
-  async () => text(configuration()),
+  async ({ runId }) =>
+    text({ ...configuration(), ...(runId ? { savedStatus: savedStatus(runId) } : {}) }),
 );
 server.registerTool(
   'council_configuration',
@@ -156,7 +162,7 @@ server.registerTool(
     inputSchema: { runId: Identifier },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  async ({ runId }) => text({ run: runtime.store.get(runId), events: runtime.store.events(runId) }),
+  async ({ runId }) => text(savedStatus(runId)),
 );
 server.registerTool(
   'council_cancel',

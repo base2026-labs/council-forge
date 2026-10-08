@@ -58,3 +58,58 @@ test('MCP initializes, discovers native room, denies mutations and runs offline'
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('reopened MCP Room reads a durable result even when live admission is disabled', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'council-mcp-reopen-'));
+  const start = async () => {
+    const client = new Client({ name: 'offline-reopen-fixture', version: '1' });
+    await client.connect(
+      new StdioClientTransport({
+        command: process.execPath,
+        args: ['dist/mcp.js'],
+        env: { PATH: process.env.PATH ?? '', COUNCIL_DATA_DIR: dir, COUNCIL_LIVE_ENABLED: 'false' },
+        stderr: 'pipe',
+      }),
+    );
+    return client;
+  };
+  let client;
+  try {
+    client = await start();
+    const run = await client.callTool({
+      name: 'council_run',
+      arguments: { request: { ...demoRequest('persisted-room'), outputLanguage: 'ar' } },
+    });
+    const saved = JSON.parse(run.content[0].text);
+    assert.equal(saved.simulation, true);
+    await client.close();
+    client = await start();
+    const room = await client.callTool({
+      name: 'council_room',
+      arguments: { runId: 'persisted-room' },
+    });
+    const restored = room.structuredContent;
+    assert.equal(restored.liveEnabled, false);
+    assert.deepEqual(restored.savedStatus.run.result, saved);
+    assert.deepEqual(restored.savedStatus.nativeInvocations, []);
+    const count = restored.savedStatus.events.length;
+    const status = await client.callTool({
+      name: 'council_status',
+      arguments: { runId: 'persisted-room' },
+    });
+    assert.equal(status.structuredContent.events.length, count);
+    const missing = await client.callTool({
+      name: 'council_room',
+      arguments: { runId: 'absent-run' },
+    });
+    assert.equal(missing.structuredContent.savedStatus.run, null);
+    const after = await client.callTool({
+      name: 'council_status',
+      arguments: { runId: 'absent-run' },
+    });
+    assert.deepEqual(after.structuredContent.events, []);
+  } finally {
+    await client?.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

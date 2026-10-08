@@ -53,6 +53,28 @@ function roomShow(value) {
   roomElement('recommendation').textContent = value.synthesis?.recommendation ?? '';
   if (value.outputLanguage) roomElement('recommendation').lang = value.outputLanguage;
 }
+function roomControls() {
+  roomElement('plan').disabled = runBusy;
+  roomElement('run').disabled = !roomConfig?.liveEnabled || runBusy || uncertainRun;
+  roomElement('cancel').disabled = !runBusy;
+  roomElement('import-evidence').disabled = runBusy || uncertainRun;
+  roomElement('read-receipt').disabled = !roomConfig;
+}
+function roomRestore(status, expectedId) {
+  const saved = status?.run;
+  if (!saved || (expectedId && saved.id !== expectedId))
+    throw new Error('Matching saved receipt unavailable. No run was dispatched.');
+  if ((runBusy || uncertainRun) && activeRun && activeRun !== saved.id)
+    throw new Error('Read the unresolved active run before selecting another receipt.');
+  activeRun = saved.id;
+  roomElement('saved-run-id').value = activeRun;
+  uncertainRun = !saved.result || !['completed', 'needs_input'].includes(saved.state);
+  roomShow({ ...status, ...(saved.result ?? {}) });
+  if (uncertainRun)
+    roomElement('state').textContent =
+      `HOLD. Saved run ${activeRun}: ${saved.state}. No automatic replay.`;
+  roomControls();
+}
 function roomOptions(select, values, chosen) {
   select.replaceChildren();
   for (const [value, label] of values) {
@@ -149,9 +171,8 @@ function roomConfigure(config) {
   );
   roomElement('budget').max = String(config.maxApiBudgetUsd);
   roomRenderAgents(true);
-  roomElement('plan').disabled = false;
-  roomElement('run').disabled = !config.liveEnabled || runBusy || uncertainRun;
-  roomElement('import-evidence').disabled = runBusy || uncertainRun;
+  roomControls();
+  if (config.savedStatus) roomRestore(config.savedStatus);
 }
 window.addEventListener('message', (event) => {
   if (event.source !== window.parent || !event.data || event.data.jsonrpc !== '2.0') return;
@@ -171,6 +192,15 @@ window.addEventListener('message', (event) => {
     roomConfigure(message.params.structuredContent);
 });
 roomElement('preset').onchange = () => roomRenderAgents(true);
+roomElement('read-receipt').onclick = async () => {
+  try {
+    const runId = roomElement('saved-run-id').value;
+    if (!runId) throw new Error('Enter an exact saved run ID.');
+    roomRestore(await roomCall('council_status', { runId }), runId);
+  } catch (error) {
+    roomElement('state').textContent = error.message;
+  }
+};
 roomElement('mode').onchange = () => {
   roomElement('budget').disabled = roomElement('mode').value === 'subscription_only';
 };
@@ -229,7 +259,7 @@ async function roomPoll() {
       })
       .join('\n');
     if (status.run?.result) {
-      roomShow(status.run.result);
+      roomRestore(status, activeRun);
       return;
     }
   } catch {
@@ -239,10 +269,11 @@ async function roomPoll() {
   if (runBusy) setTimeout(roomPoll, 1500);
 }
 roomElement('run').onclick = async () => {
-  if (runBusy || uncertainRun) return;
+  if (runBusy || uncertainRun || !roomConfig?.liveEnabled) return;
   try {
     const request = roomReadRequest();
     activeRun = request.runId;
+    roomElement('saved-run-id').value = activeRun;
     runBusy = true;
     roomElement('run').disabled = true;
     roomElement('plan').disabled = true;
@@ -263,9 +294,7 @@ roomElement('run').onclick = async () => {
     roomElement('state').textContent = error.message;
   } finally {
     runBusy = false;
-    roomElement('plan').disabled = false;
-    roomElement('cancel').disabled = true;
-    roomElement('import-evidence').disabled = uncertainRun;
+    roomControls();
   }
 };
 roomElement('cancel').onclick = async () => {
@@ -281,7 +310,7 @@ if (window.parent === window) {
     'Component preview only. Open council_room in an MCP Apps host to connect. No live or fixture run is performed here.';
 } else {
   roomRequest('ui/initialize', {
-    appInfo: { name: 'Council Forge', version: '0.1.0-alpha.2' },
+    appInfo: { name: 'Council Forge', version: '0.1.0-alpha.3' },
     appCapabilities: {},
     protocolVersion: '2026-01-26',
   })

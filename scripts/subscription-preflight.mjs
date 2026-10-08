@@ -19,7 +19,7 @@ async function inspect(method, params) {
 }
 try {
   await inspect('initialize', {
-    clientInfo: { name: 'council_metadata', version: '0.1.0-alpha.2' },
+    clientInfo: { name: 'council_metadata', version: '0.1.0-alpha.3' },
   });
   rpc.notify('initialized', {});
   const account = await inspect('account/read', { refreshToken: false });

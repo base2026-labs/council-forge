@@ -99,3 +99,20 @@ acceptance only, no live crawl. Legacy single-page/import behavior and accepted 
 receipts/accounting/pins remain in place. Preserve the 221-test predecessor and exact
 CF-E1/E2 regressions. The two original subscription UNKNOWNs and revoked live admission
 remain unchanged. Existing controller owns independent review; M1–M5 remain open.
+
+## First usable native council continuation — 2026-10-08
+
+Version alpha.3 prioritizes M1/M2: saved receipt reopening, accurate native terminal
+knowledge and exact namespaced run admission. See PLUGIN.md and NATIVE-RECEIPTS.md.
+An existing task-local install can be updated through `codex plugin add`; compare all
+source/compiled/UI hashes after the normal update. Preserve the historical alpha.2
+database and revoked admission. An explicitly chosen new namespace does not settle
+original UNKNOWN exposure or authorize inference.
+
+The executor supplies one distinct harmless five-call subscription-only candidate, API
+budget zero, concurrency one, Russian output and immutable Sol/MAX pins. Its admission
+payload is a review artifact, never an installed live gate. Existing controller owns
+independent review and the exact coordinator decision about retained old exposure/new
+admission, plus a supported embedded-host handoff. Never replay the two old tuples.
+A CLI/native tool result, component preview and completed fake council do not establish
+an embedded/live council. Keep the draft and issue open until those criteria pass.
