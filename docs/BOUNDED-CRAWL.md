@@ -58,7 +58,12 @@ and unsupported semantics can HOLD earlier than the specification's general beha
 The fixed HTTP identification contains product token `CouncilForge`. Exact product-token
 groups match case-insensitively and combine; otherwise wildcard groups combine. Paths
 match case-sensitively from the first character, including the query. Supported rules
-start with `/`; comments, empty paths, `*` and terminal `$` are supported. Comparison
+start with `/`; comments, empty paths, `*` and terminal `$` are supported. Record/value
+formatting removes only ASCII SP/HTAB, as defined in RFC 9309 section 2.2. Unicode
+whitespace in paths is preserved as literal UTF-8 data, including U+00A0, U+2003 and
+U+FEFF suffixes; it must never broaden an Allow rule. Non-ASCII whitespace around
+record names, colons or agent tokens is unsupported syntax and produces explicit HOLD.
+Unicode within comments remains inert data. Comparison
 normalizes percent hex case and encoded unreserved ASCII; Unicode uses UTF-8 percent
 octets. Encoded reserved `/` remains distinct; literal `*`/`$` in target paths match
 their percent-encoded rule forms. The longest comparison-octet pattern wins; equivalent

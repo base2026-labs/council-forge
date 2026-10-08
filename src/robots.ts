@@ -48,7 +48,9 @@ export function parseRobots(text: string): RobotsPolicy {
       issue(i + 1, 'ROBOTS_INVALID_CHARACTER');
       continue;
     }
-    const line = raw.split('#', 1)[0]!.trim();
+    // RFC 9309 section 2.2 defines formatting whitespace as SP / HTAB only.
+    // Unicode whitespace can be literal UTF-8 path data; removing it can broaden Allow.
+    const line = raw.split('#', 1)[0]!.replace(/^[ \t]+|[ \t]+$/g, '');
     if (!line) continue;
     const match = /^([a-zA-Z-]+)[ \t]*:[ \t]*(.*)$/.exec(line);
     if (!match) {
@@ -56,7 +58,7 @@ export function parseRobots(text: string): RobotsPolicy {
       continue;
     }
     const field = match[1]!.toLowerCase(),
-      value = match[2]!.trim();
+      value = match[2]!;
     if (field === 'user-agent') {
       if (!/^(\*|[a-zA-Z_-]+)$/.test(value)) {
         issue(i + 1, 'ROBOTS_UNSUPPORTED_AGENT');
