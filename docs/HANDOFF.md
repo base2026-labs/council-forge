@@ -77,3 +77,15 @@ acceptance. The additive table does not backfill historical identities. Existing
 UNKNOWN outcomes and revoked live admission are preserved. This is a bounded offline
 engineering stage; all remaining live, native-host, multilingual, hosted-CI and backlog
 acceptance still belongs to the existing issue and controller review route.
+
+## Typed offline SEO evidence continuation — 2026-10-08
+
+The next M3 slice adds provider-specific supplied GSC URL Inspection/Search Analytics
+normalization and explicitly supplied source/rendered DOM parsing, preserving generic
+import. Read [SEO-EVIDENCE.md](SEO-EVIDENCE.md) for field meanings, exact scope, unknowns,
+bounds and the requirement-to-evidence matrix. The existing MCP import tool, CLI and room
+accept the typed packet without fetching or inference. Permission/capture/completeness
+remain caller assertions. This is offline production code, not live collector acceptance;
+crawler/SERP/schema/evaluation and embedded-host/live criteria remain open. Preserve the
+accepted 133-test native-receipt predecessor, CF-R1/R2, frozen artifacts, original UNKNOWN
+outcomes and revoked live admission. No issue is closed by this slice.

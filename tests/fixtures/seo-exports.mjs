@@ -1,0 +1,108 @@
+// Synthetic public examples; no client, account or service data.
+export const now = Date.parse('2026-10-08T14:00:00.000Z');
+export const property = 'sc-domain:example.com';
+export const url = 'https://example.com/日本語?view=1';
+export const scope = {
+  collector: 'owner-export',
+  permission: 'read',
+  resources: [property, url],
+  maxObservations: 10,
+  maxBytes: 200000,
+  maxDepth: 20,
+  maxRows: 100,
+  maxDomNodes: 5000,
+  maxFacts: 100,
+  maxAgeHours: 168,
+};
+const header = {
+  observedAt: '2026-10-08T12:00:00.000Z',
+  provenance: {
+    collector: 'owner-export',
+    permission: 'read',
+    permissionReceipt: 'owner:synthetic-export',
+    exportId: 'fixture-1',
+  },
+  completeness: { state: 'complete', truncated: false },
+};
+export const inspection = {
+  ...header,
+  id: 'inspection-1',
+  sourceType: 'gsc_url_inspection_export',
+  request: { siteUrl: property, inspectionUrl: url, languageCode: 'ja' },
+  response: {
+    inspectionResult: {
+      inspectionResultLink:
+        'https://search.google.com/search-console/inspect?resource_id=sc-domain%3Aexample.com',
+      indexStatusResult: {
+        verdict: 'PASS',
+        coverageState: '登録済み — Indexed',
+        robotsTxtState: 'ALLOWED',
+        indexingState: 'INDEXING_ALLOWED',
+        lastCrawlTime: '2026-10-07T10:00:00.123456789Z',
+        pageFetchState: 'SUCCESSFUL',
+        googleCanonical: 'https://example.com/google',
+        userCanonical: 'https://example.com/user',
+        crawledAs: 'MOBILE',
+        sitemap: ['https://example.com/sitemap.xml'],
+        referringUrls: ['https://example.com/'],
+      },
+      richResultsResult: { verdict: 'PASS' },
+    },
+  },
+};
+export const analytics = {
+  ...header,
+  id: 'analytics-1',
+  sourceType: 'gsc_search_analytics_export',
+  request: {
+    siteUrl: property,
+    startDate: '2026-10-01',
+    endDate: '2026-10-03',
+    dimensions: ['date', 'query', 'page'],
+    dimensionFilterGroups: [
+      {
+        groupType: 'and',
+        filters: [{ dimension: 'query', operator: 'contains', expression: '結婚式' }],
+      },
+    ],
+    type: 'web',
+    dataState: 'all',
+    aggregationType: 'auto',
+    rowLimit: 100,
+    startRow: 0,
+  },
+  response: {
+    rows: [
+      {
+        keys: ['2026-10-01', '結婚式 العربية свадьба', url],
+        clicks: 2,
+        impressions: 20,
+        ctr: 0.1,
+        position: 8.5,
+      },
+      { keys: ['2026-10-03', '結婚式', url], clicks: 0, impressions: 3, ctr: 0, position: 12 },
+    ],
+    responseAggregationType: 'byPage',
+    metadata: { first_incomplete_date: '2026-10-03' },
+  },
+};
+export const source = {
+  ...header,
+  id: 'source-1',
+  sourceType: 'source_html',
+  url,
+  capture: { method: 'source_export', description: 'Synthetic source response, no fetch' },
+  html: '<!doctype html><title>結婚式 العربية</title><link rel="canonical" href="/source"><meta name="robots" content="noindex"><h1>Свадьба</h1><script type="application/ld+json">{"@type":"Article"}</script><img src="/image" alt="">',
+};
+export const rendered = {
+  ...source,
+  id: 'rendered-1',
+  sourceType: 'rendered_dom',
+  capture: {
+    method: 'rendered_dom_export',
+    description: 'Synthetic browser DOM export',
+    renderer: 'synthetic fixture',
+  },
+  html: '<!doctype html><title>結婚式 العربية</title><link rel="canonical" href="/rendered"><h1>Rendered Свадьба</h1><script type="application/ld+json">{"@type":"Article"}</script>',
+};
+export const copy = (x) => structuredClone(x);

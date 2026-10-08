@@ -170,3 +170,23 @@ cannot manufacture old identifiers. No live request, uncertain-operation replay,
 inference, plugin reinstall, manual CI rerun or account change accompanies this work.
 Hosted CI outcome must be read back separately; local checks do not establish hosted CI
 success. Independent review remains controller-owned, and #1–#5 remain open.
+
+## Typed offline SEO evidence continuation — 2026-10-08
+
+Built on independently accepted native-receipt head
+`a8c19e7308594fc64383e94b6df5164a96b5a9a6` (133 tests). The first five new typed-export
+regressions failed on that predecessor before implementing the adapters. The continuation
+adds 50 meaningful regressions: provider/partial/error/aggregate exports, scope/property
+boundaries, freshness and canonical disagreement, source/rendered/JSON-LD/template
+observations, Unicode/injection, identity/provenance conflicts, malformed data and limits,
+CLI/MCP dispatch denial, generic import compatibility, role/receipt and inert Room flow.
+The current full suite contains **183 tests**, including all predecessor cases.
+
+Focused checks, lint, typecheck, full tests, format and offline demo must pass at the final
+exact candidate head, recorded by the task worker rather than a moving branch or historical
+CI. Guarded CLI/MCP tests disable HTTP, HTTPS, DNS, sockets and provider subprocess dispatch;
+import still succeeds. Fake providers/MCP/Room fixtures are offline validation, not live
+service or embedded-host acceptance. No provider/model pilot, GSC API/browser/SEO collection,
+paid call or historical UNKNOWN replay is part of this slice. Existing hosted CI is read
+accurately after the normal branch update, without manual rerun; local success is not
+hosted CI green. See [SEO evidence contract and M3 matrix](SEO-EVIDENCE.md).

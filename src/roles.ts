@@ -13,6 +13,7 @@ const contract = (brief: string, skill: string, kinds: Evidence['kind'][]): Role
   capabilities: ['supplied_evidence'],
   allowedEvidenceKinds: kinds,
   limitations: [
+    'Typed exports preserve provider reports, supplied-document facts and caller assertions separately. Null/date gaps are UNKNOWN; stale/partial observations do not establish current state or causality.',
     'No inherited user plugins or external tool access.',
     'Evidence support is fallible; missing facts require HOLD.',
     'No repository, website, GSC or external system mutations.',
@@ -52,7 +53,7 @@ export const ROLE_CONTRACTS: Record<Agent['role'], RoleContract> = {
     ['document', 'serp', 'source_html', 'rendered_html', 'provider_metric', 'hypothesis'],
   ),
   indexation: contract(
-    'Compare dated GSC URL Inspection, sitemap and crawl observations. Keep Google-selected canonical separate from source canonical. Unobserved index status and indexing causes remain UNKNOWN.',
+    'Compare dated GSC URL Inspection, sitemap and crawl observations. Keep Google-selected canonical, GSC user canonical and source/rendered declarations distinct. Provider indexed-version reports are not live URL tests. Unobserved index status and indexing causes remain UNKNOWN.',
     'indexation',
     ['gsc', 'crawl', 'source_html', 'rendered_html', 'document', 'hypothesis'],
   ),

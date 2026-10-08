@@ -71,3 +71,14 @@ immutable user selections. Changed pins, permissions, spending, evidence or lang
 rejected. Its evidence advice is a local shadow observation, not a Jev call or automatic
 model switch. Jev's existing aggregate triage remains separately budgeted and advisory.
 Adaptive debate, retrieval and equal-budget accuracy experiments are still backlog work.
+
+## Typed offline exports
+
+The existing supplied-evidence capability now includes [typed SEO export adapters](SEO-EVIDENCE.md).
+URL Inspection is `gsc`; Search Analytics metrics are `provider_metric`; supplied source
+and explicitly labeled rendered DOM retain their separate kinds. Role filtering remains
+unchanged. Every phase must distinguish provider reports, locally parsed supplied-document
+facts and caller assertions. Null/omitted metrics and dates are UNKNOWN. Stale/partial
+observations do not prove current completeness, indexation/ranking causality or rich-result
+eligibility. Native/request receipts preserve the structured observation and Unicode.
+This capability adds no model tool, live GSC/browser/SEO access or write authorization.

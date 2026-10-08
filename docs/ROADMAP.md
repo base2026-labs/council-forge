@@ -33,3 +33,12 @@ Hosted products need an approved service agreement, supported Sign in with ChatG
 authenticated HTTPS MCP, tenant isolation, vault-backed keys, distributed limits and
 retention controls. Ordinary Codex auth must not become a commercial subscription proxy.
 Merge, release, deployment and directory submission require actual authority.
+
+## M3 typed offline implementation — 2026-10-08
+
+The supplied-export adapters now normalize bounded URL Inspection and Search Analytics
+responses plus supplied source/rendered DOM observations through the existing evidence
+flow. Generic imports remain supported. See [M3 requirement-to-evidence matrix](SEO-EVIDENCE.md#requirement-to-evidence-matrix-for-existing-m3-3).
+The live GSC/browser collector integration, robots-aware crawler, SERP/schema requirements
+and broader evaluation remainder remain unverified/open. Public synthetic regressions are
+not a completed live collector or accuracy benchmark. M3 and AGR-45 remain open.

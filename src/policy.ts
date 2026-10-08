@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { boundJson, validateTypedEvidence } from './evidence-validation.ts';
 import {
   SettingsSchema,
   RequestSchema,
@@ -58,6 +59,10 @@ export function preflight(rawSettings: unknown, rawRequest: unknown) {
     fail('DUPLICATE_AGENT', 'Agent IDs must be unique.');
   if (new Set(request.evidence.map((e) => e.id)).size !== request.evidence.length)
     fail('DUPLICATE_EVIDENCE', 'Evidence IDs must be unique.');
+  if (request.evidence.some((e) => e.observation)) boundJson(request.evidence, 200000, 32);
+  validateTypedEvidence(request.evidence);
+  if (request.evidence.some((e) => e.observation && Date.parse(e.observedAt) > Date.now()))
+    fail('FUTURE_EVIDENCE', 'Typed observation timestamps cannot be in the future.');
   if (request.evidence.some((e) => Date.parse(e.observedAt) > Date.now() + 300000))
     fail('FUTURE_EVIDENCE', 'Evidence timestamps cannot be in the future.');
   if (!settings.allowedModes.includes(request.mode))

@@ -151,6 +151,7 @@ function roomConfigure(config) {
   roomRenderAgents(true);
   roomElement('plan').disabled = false;
   roomElement('run').disabled = !config.liveEnabled || runBusy || uncertainRun;
+  roomElement('import-evidence').disabled = runBusy || uncertainRun;
 }
 window.addEventListener('message', (event) => {
   if (event.source !== window.parent || !event.data || event.data.jsonrpc !== '2.0') return;
@@ -202,6 +203,21 @@ roomElement('plan').onclick = async () => {
     roomElement('state').textContent = error.message;
   }
 };
+roomElement('import-evidence').onclick = async () => {
+  if (runBusy || uncertainRun) return;
+  const button = roomElement('import-evidence');
+  button.disabled = true;
+  try {
+    const packet = JSON.parse(roomElement('import-packet').value);
+    const result = await roomCall('council_import_observations', packet);
+    roomElement('evidence').value = JSON.stringify(result.evidence, null, 2);
+    roomShow({ status: 'Evidence imported', ...result });
+  } catch (error) {
+    roomElement('state').textContent = error.message;
+  } finally {
+    button.disabled = runBusy || uncertainRun;
+  }
+};
 async function roomPoll() {
   if (!runBusy || !activeRun) return;
   try {
@@ -231,6 +247,7 @@ roomElement('run').onclick = async () => {
     roomElement('run').disabled = true;
     roomElement('plan').disabled = true;
     roomElement('cancel').disabled = false;
+    roomElement('import-evidence').disabled = true;
     roomElement('state').textContent = `Running ${activeRun}`;
     setTimeout(roomPoll, 1000);
     const result = await roomCall('council_run', { request }, request.timeoutMs + 30000);
@@ -248,6 +265,7 @@ roomElement('run').onclick = async () => {
     runBusy = false;
     roomElement('plan').disabled = false;
     roomElement('cancel').disabled = true;
+    roomElement('import-evidence').disabled = uncertainRun;
   }
 };
 roomElement('cancel').onclick = async () => {

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { RequestSchema, Identifier, AgentSchema, EvidenceSchema } from './schema.ts';
+import { RequestSchema, Identifier, AgentSchema } from './schema.ts';
 import { preflight, CouncilError } from './policy.ts';
 import { openRuntime, catalogue } from './runtime.ts';
 import { inspectHtml } from './seo.ts';
@@ -9,7 +9,7 @@ import { ROOM_URI, roomHtml } from './room.ts';
 import { createPreset, presetContracts, PresetName } from './presets.ts';
 import { contracts } from './roles.ts';
 import { councilCapabilities } from './capabilities.ts';
-import { ObservationScope, importObservations, collectorContracts } from './collectors.ts';
+import { EvidencePacketSchema, importEvidencePacket, collectorContracts } from './collectors.ts';
 const runtime = openRuntime();
 const server = new McpServer({ name: 'council-forge', version: '0.1.0-alpha.2' });
 const text = (value: unknown) => ({
@@ -128,12 +128,11 @@ server.registerTool(
   'council_import_observations',
   {
     description:
-      'Validate supplied observations against exact read scope and byte/count bounds. Does not fetch sources or inherit user plugins; provenance remains caller-reported.',
-    inputSchema: { scope: ObservationScope, observations: z.array(EvidenceSchema).max(100) },
+      'Import generic observations or typed supplied GSC URL Inspection/Search Analytics/source/rendered DOM exports under exact read scope and byte/count/depth bounds. No fetch or inference. Permission and acquisition remain caller assertions.',
+    inputSchema: EvidencePacketSchema,
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
-  async ({ scope, observations }) =>
-    safe(() => ({ evidence: importObservations(scope, observations) })),
+  async (packet) => safe(() => importEvidencePacket(packet)),
 );
 server.registerTool(
   'council_run',

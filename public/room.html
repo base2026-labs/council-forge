@@ -60,6 +60,23 @@
             from your other plugins.
           </p>
           <label>Evidence JSON<textarea id="evidence" rows="7">[]</textarea></label>
+          <p>
+            Import an authorized export packet with its exact read scope, provenance and timestamps.
+            GSC reports and supplied source/rendered DOM remain distinct.
+          </p>
+          <label
+            >Export packet JSON<textarea
+              id="import-packet"
+              rows="7"
+              maxlength="200000"
+              placeholder='{"scope": {...}, "exports": [...]}'
+            ></textarea>
+          </label>
+          <button id="import-evidence" disabled>Use exported evidence</button>
+          <p>
+            This replaces the evidence array after validation. It parses supplied data only; it does
+            not fetch sources or convene a council.
+          </p>
         </details>
         <p class="notice">
           Models and reasoning effort are explicit pins. Missing evidence produces HOLD. Jev remains
