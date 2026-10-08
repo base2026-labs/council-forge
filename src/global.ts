@@ -7,13 +7,17 @@ import { fail } from './policy.ts';
 import { Store } from './store.ts';
 export class GlobalCoordinator {
   private db: DatabaseSync;
-  readonly budget: Store;
+  private budgetStore?: Store;
+  get budget(): Store {
+    // Discovery/plan/status must not migrate or settle a preserved legacy ledger.
+    // Paid accounting opens the same shared database only when it is needed.
+    return (this.budgetStore ??= new Store(this.path));
+  }
   constructor(readonly path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec(
       'PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS leases (id INTEGER PRIMARY KEY, pid INTEGER NOT NULL, cap INTEGER NOT NULL);',
     );
-    this.budget = new Store(path);
   }
   async use<T>(limit: number, signal: AbortSignal, fn: () => Promise<T>): Promise<T> {
     if (!Number.isInteger(limit) || limit < 1 || limit > 3)
@@ -57,7 +61,7 @@ export class GlobalCoordinator {
     }
   }
   close() {
-    this.budget.close();
+    this.budgetStore?.close();
     this.db.close();
   }
 }

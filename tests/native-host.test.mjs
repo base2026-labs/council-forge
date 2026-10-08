@@ -4,12 +4,57 @@ import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { runInNewContext } from 'node:vm';
 import { CodexLocalProvider } from '../dist/adapters/codex-local.js';
 import { loadSettings } from '../dist/runtime.js';
 import { demoSettings, demoRequest } from '../dist/demo.js';
+import { GlobalCoordinator } from '../dist/global.js';
 
 const digest = (value) => createHash('sha256').update(value).digest('hex');
+test('passive global discovery preserves legacy database bytes and reservation state', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'native-passive-global-'));
+  const path = join(root, 'legacy.sqlite');
+  const legacy = new DatabaseSync(path);
+  legacy.exec(`
+    CREATE TABLE leases (id INTEGER PRIMARY KEY, pid INTEGER NOT NULL, cap INTEGER NOT NULL);
+    CREATE TABLE calls (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, reserved INTEGER NOT NULL, charged INTEGER, state TEXT NOT NULL);
+    INSERT INTO calls VALUES ('old-unknown', 'old-run', 12000, NULL, 'unknown');
+  `);
+  legacy.close();
+  const before = digest(await readFile(path));
+  let coordinator;
+  try {
+    coordinator = new GlobalCoordinator(path);
+    assert.equal(coordinator.path, path);
+    coordinator.close();
+    coordinator = undefined;
+    assert.equal(digest(await readFile(path)), before);
+    coordinator = new GlobalCoordinator(path);
+    assert.equal(coordinator.budget.exposure(), 12000);
+    coordinator.close();
+    coordinator = undefined;
+    const db = new DatabaseSync(path, { readOnly: true });
+    try {
+      assert.deepEqual(
+        { ...db.prepare('SELECT * FROM calls').get() },
+        {
+          id: 'old-unknown',
+          run_id: 'old-run',
+          reserved: 12000,
+          charged: null,
+          state: 'unknown',
+        },
+      );
+      assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE name='native_invocations'").get());
+    } finally {
+      db.close();
+    }
+  } finally {
+    coordinator?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
 for (const [mode, known] of [
   ['failed-first', true],
   ['interrupted', true],

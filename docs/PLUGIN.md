@@ -96,6 +96,11 @@ or reset older state. The default remains `PLUGIN_DATA/runs`. A new namespace is
 when historical databases must remain byte-identical. It is not a way to disregard old
 UNKNOWN exposure. The shared global coordinator still applies.
 
+Discovery, planning and receipt reads do not open or migrate the shared paid ledger.
+It is opened lazily when accounting is required, at the same global database path.
+This preserves a legacy database during passive host inspection; it does not create
+another pool or erase reservations. Actual provider work still uses shared leases.
+
 For a namespaced native runtime, admission additionally requires `runtimeSha256`,
 `runId` and `requestSha256`: hashes of the exact runtime file and the **normalized**
 request returned by `council_plan`. A changed namespace/config/request or different run
