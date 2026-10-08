@@ -128,7 +128,7 @@ server.registerTool(
   'council_import_observations',
   {
     description:
-      'Import generic observations or typed supplied GSC URL Inspection/Search Analytics/source/rendered DOM exports under exact read scope and byte/count/depth bounds. No fetch or inference. Permission and acquisition remain caller assertions.',
+      'Import generic observations, bounded source crawl receipts or typed supplied GSC URL Inspection/Search Analytics/source/rendered DOM exports under exact read scope and byte/count/depth bounds. No fetch or inference. Permission and acquisition remain caller assertions.',
     inputSchema: EvidencePacketSchema,
     annotations: { readOnlyHint: true, openWorldHint: false },
   },

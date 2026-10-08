@@ -124,3 +124,11 @@ Keep real customer material, credentials, local auth files and inference transcr
 out of public fixtures. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 MIT License. Maintained by Alex Yarosh.
+
+### Explicit bounded public source crawl
+
+The operator CLI `crawl-public` supports scoped robots-aware source traversal with
+finite budgets and source-bound receipts. [Read the contract](docs/BOUNDED-CRAWL.md)
+before supplying authority. `collect-public` remains a selected-page collector. Import
+crawl evidence through existing CLI/MCP/Room observations without granting model tools.
+No live crawler acceptance is claimed; the refusal example omits robots authority.

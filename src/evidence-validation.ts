@@ -1,6 +1,8 @@
 import { fail, hash } from './policy.ts';
 import type { Evidence } from './schema.ts';
 import { DocumentUrl, type TypedObservation } from './evidence-schema.ts';
+import { crawlRequiredResources, validateCrawlEvidence } from './crawl-validation.ts';
+import type { CrawlObservation } from './crawl-schema.ts';
 
 // Walk before parsing schemas or hashing. No recursion, getters, toJSON or coercion.
 export function boundJson(value: unknown, maxBytes: number, maxDepth: number, maxNodes = 20000) {
@@ -71,7 +73,15 @@ export function validateGscPropertyUrl(property: string, url: string) {
   }
   if (!within) fail('COLLECTION_SCOPE', 'Concrete URL does not belong to the exact GSC property.');
 }
-export function validateTypedResourceScope(resources: string[], o: TypedObservation) {
+export function validateTypedResourceScope(
+  resources: string[],
+  o: TypedObservation | CrawlObservation,
+) {
+  if (o.adapter === 'public_crawl') {
+    if (crawlRequiredResources(o).some((url) => !resources.includes(url)))
+      fail('COLLECTION_SCOPE', 'Crawl acquisition resources are outside the exact read scope.');
+    return;
+  }
   const required = [o.resource.propertyId, o.resource.url].filter((v): v is string => v !== null);
   if (o.adapter === 'gsc_search_analytics') {
     const pageIndex = o.request.dimensions?.indexOf('page') ?? -1;
@@ -97,10 +107,11 @@ export function observationIdentity(
   });
 }
 export function validateTypedEvidence(evidence: Evidence[]) {
+  validateCrawlEvidence(evidence);
   const seen = new Map<string, TypedObservation>();
   for (const e of evidence) {
     const o = e.observation;
-    if (!o) continue;
+    if (!o || o.adapter === 'public_crawl') continue;
     const bindingMatches =
       o.adapter === 'dom'
         ? o.resource.propertyId === null &&

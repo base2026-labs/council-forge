@@ -1,145 +1,24 @@
-import { lookup } from 'node:dns/promises';
-import { request } from 'node:https';
-import { isIP } from 'node:net';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { ObservationScope } from './collectors.ts';
 import { EvidenceSchema } from './schema.ts';
-import { CouncilError, fail } from './policy.ts';
+import { fail } from './policy.ts';
 import type { GlobalCoordinator } from './global.ts';
 import { inspectHtml } from './seo.ts';
+import { publicHttpsUrl, getPublicPage } from './public-network.ts';
+export { publicHttpsUrl, isPublicIpv4 } from './public-network.ts';
 
 export const PublicPageScope = ObservationScope.extend({
   maxRequests: z.number().int().min(1).max(25).default(1),
   timeoutMs: z.number().int().min(1000).max(30000).default(10000),
   maxRedirects: z.number().int().min(0).max(3).default(0),
 }).strict();
-export function publicHttpsUrl(value: string): URL {
-  const url = new URL(value);
-  if (
-    url.protocol !== 'https:' ||
-    url.username ||
-    url.password ||
-    url.hash ||
-    (url.port && url.port !== '443') ||
-    isIP(url.hostname) ||
-    !url.hostname.includes('.') ||
-    url.hostname.endsWith('.localhost')
-  )
-    fail(
-      'PUBLIC_URL_REQUIRED',
-      'Only public HTTPS domain URLs without credentials, fragments or custom ports are supported.',
-    );
-  return url;
-}
-export function isPublicIpv4(value: string): boolean {
-  if (isIP(value) !== 4) return false;
-  const [a, b, c] = value.split('.').map(Number) as [number, number, number, number];
-  return !(
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    a >= 224 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 192 && b === 0 && (c === 0 || c === 2)) ||
-    (a === 192 && b === 88 && c === 99) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113)
-  );
-}
-async function getPage(url: URL, maxBytes: number, timeoutMs: number, signal: AbortSignal) {
-  const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]);
-  requestSignal.throwIfAborted();
-  if (maxBytes < 1) fail('COLLECTION_BYTES_EXCEEDED', 'No response byte allowance remains.');
-  // Resolve once, reject private/special answers, then pin the connection to that address.
-  // IPv6-only hosts are conservatively unsupported; no proxy env or credentials are used.
-  const addresses = await Promise.race([
-    lookup(url.hostname, { family: 4, all: true }),
-    new Promise<never>((_resolve, reject) =>
-      requestSignal.addEventListener('abort', () => reject(requestSignal.reason), { once: true }),
-    ),
-  ]);
-  if (!addresses.length || addresses.some(({ address }) => !isPublicIpv4(address)))
-    fail('PRIVATE_NETWORK_DENIED', 'DNS must resolve exclusively to public IPv4 addresses.');
-  requestSignal.throwIfAborted();
-  return new Promise<{ status: number; location?: string; contentType: string; body: Buffer }>(
-    (resolve, reject) => {
-      const req = request(
-        url,
-        {
-          method: 'GET',
-          agent: false,
-          signal: requestSignal,
-          headers: {
-            'User-Agent': 'CouncilForge/0.1 source-observation',
-            Accept: 'text/html,text/plain;q=0.5',
-          },
-          lookup: (_host, options, callback) => {
-            if (options.all) callback(null, addresses);
-            else callback(null, addresses[0]!.address, 4);
-          },
-        },
-        (response) => {
-          if (
-            response.headers['content-encoding'] &&
-            response.headers['content-encoding'] !== 'identity'
-          ) {
-            response.destroy();
-            req.destroy(
-              new CouncilError(
-                'SOURCE_ENCODING_UNSUPPORTED',
-                'Compressed source responses are unsupported.',
-              ),
-            );
-            return;
-          }
-          const chunks: Buffer[] = [];
-          let size = 0;
-          response.on('data', (chunk: Buffer) => {
-            size += chunk.length;
-            if (size > maxBytes) {
-              const error = new CouncilError(
-                'COLLECTION_BYTES_EXCEEDED',
-                'Response exceeded the remaining collection byte limit.',
-              );
-              response.destroy(error);
-              req.destroy(error);
-            } else chunks.push(chunk);
-          });
-          response.on('error', reject);
-          response.on('end', () =>
-            resolve({
-              status: response.statusCode ?? 0,
-              location: response.headers.location,
-              contentType: response.headers['content-type'] ?? '',
-              body: Buffer.concat(chunks),
-            }),
-          );
-        },
-      );
-      req.on('error', reject);
-      req.setTimeout(timeoutMs, () =>
-        req.destroy(
-          new CouncilError(
-            'COLLECTION_TIMEOUT',
-            'Public page request timed out; no retry was attempted.',
-          ),
-        ),
-      );
-      req.end();
-    },
-  );
-}
 export async function collectPublicPages(
   rawScope: unknown,
   requestedUrls: string[],
   global: GlobalCoordinator,
   signal: AbortSignal,
-  transport = getPage,
+  transport = getPublicPage,
 ) {
   const scope = PublicPageScope.parse(rawScope);
   const allowed = new Set(scope.resources.map((value) => publicHttpsUrl(value).href));

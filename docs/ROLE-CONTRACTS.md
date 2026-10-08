@@ -51,7 +51,7 @@ It discovers no links and does not implement a robots-policy crawler. No automat
 
 Network collection is an explicit host/operator action, separate from model inference.
 No collection tool is granted to the live milestone agents. Rendered-browser, GSC,
-authenticated crawl and paid SERP connectors remain unimplemented/unapproved pilots.
+live crawler acceptance and paid SERP connectors remain unverified/unapproved pilots.
 Source HTML is not evidence of Google-selected canonical, rich-result eligibility or
 indexation causality. No receipt claims those observations were obtained.
 
@@ -82,3 +82,11 @@ facts and caller assertions. Null/omitted metrics and dates are UNKNOWN. Stale/p
 observations do not prove current completeness, indexation/ranking causality or rich-result
 eligibility. Native/request receipts preserve the structured observation and Unicode.
 This capability adds no model tool, live GSC/browser/SEO access or write authorization.
+
+## Bounded source crawl receipts
+
+The operator CLI [explicit crawler mode](BOUNDED-CRAWL.md) returns `crawl` evidence.
+Import it through the existing observations packet; no new MCP/model acquisition tool
+is registered. Existing role contracts filter that evidence kind without changing pins
+or review roles. Robots decisions and links are dated source/local observations, separate
+from permission and GSC indexation reports. Unsupported/stale/partial results require HOLD.

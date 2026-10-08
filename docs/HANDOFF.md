@@ -89,3 +89,13 @@ remain caller assertions. This is offline production code, not live collector ac
 crawler/SERP/schema/evaluation and embedded-host/live criteria remain open. Preserve the
 accepted 133-test native-receipt predecessor, CF-R1/R2, frozen artifacts, original UNKNOWN
 outcomes and revoked live admission. No issue is closed by this slice.
+
+## Bounded source crawl continuation — 2026-10-08
+
+Read [BOUNDED-CRAWL.md](BOUNDED-CRAWL.md) before using the explicit operator mode or
+interpreting receipts. Scope includes initial robots and every redirected retrieval URL;
+discovered references never authorize access. The implementation has fake-transport
+acceptance only, no live crawl. Legacy single-page/import behavior and accepted native
+receipts/accounting/pins remain in place. Preserve the 221-test predecessor and exact
+CF-E1/E2 regressions. The two original subscription UNKNOWNs and revoked live admission
+remain unchanged. Existing controller owns independent review; M1–M5 remain open.

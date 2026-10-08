@@ -4,13 +4,13 @@ The five existing GitHub issues remain canonical. This candidate extends the ori
 repository and MIT attribution; it creates no replacement project or duplicate issues.
 No issue is closed merely because a draft PR or offline fixture exists.
 
-| Existing issue                                                  | Candidate delivery                                                                                                 | Remaining acceptance                                                                                                                                 |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [M1 #1](https://github.com/offflinerpsy/council-forge/issues/1) | Current app-server contracts, existing-auth isolation, exact pins, read-only boundary and UNKNOWN failure receipts | Full live council, account/quota failures, paid OpenRouter/Jev pilots with explicit authorization, token-only billing reconciliation                 |
-| [M2 #2](https://github.com/offflinerpsy/council-forge/issues/2) | Installed native Codex plugin, ten tools, MCP Apps room, role selectors, plan/run/cancel/status/evidence receipts  | Embedded desktop rendering, complete successful live flow, hosted ChatGPT route and consent/auth UX                                                  |
-| [M3 #3](https://github.com/offflinerpsy/council-forge/issues/3) | Thirteen role contracts, three presets, typed bounded imports and actual scoped public HTTPS source collector      | Robots-aware crawler, rendered browser, authorized GSC, schema requirements and SERP adapters, stronger evaluation                                   |
-| [M4 #4](https://github.com/offflinerpsy/council-forge/issues/4) | Immutable bounded candidate admission and evidence advice; existing Jev remains advisory                           | Jev ranking in shadow mode, bounded revision, reproducible equal-budget comparisons; no accuracy/cost gain claim                                     |
-| [M5 #5](https://github.com/offflinerpsy/council-forge/issues/5) | Lint, platform CI matrix, review template, maintainer ownership and exact-head evidence                            | Running hosted CI, native platform pilots, independent controller review, retention/security hardening and any separately authorized release/hosting |
+| Existing issue                                                  | Candidate delivery                                                                                                                              | Remaining acceptance                                                                                                                                 |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [M1 #1](https://github.com/offflinerpsy/council-forge/issues/1) | Current app-server contracts, existing-auth isolation, exact pins, read-only boundary and UNKNOWN failure receipts                              | Full live council, account/quota failures, paid OpenRouter/Jev pilots with explicit authorization, token-only billing reconciliation                 |
+| [M2 #2](https://github.com/offflinerpsy/council-forge/issues/2) | Installed native Codex plugin, ten tools, MCP Apps room, role selectors, plan/run/cancel/status/evidence receipts                               | Embedded desktop rendering, complete successful live flow, hosted ChatGPT route and consent/auth UX                                                  |
+| [M3 #3](https://github.com/offflinerpsy/council-forge/issues/3) | Thirteen role contracts, three presets, typed bounded imports, scoped public HTTPS source collector and explicit bounded robots-aware traversal | Live crawler acceptance, rendered browser, authorized GSC, schema requirements and SERP adapters, stronger evaluation                                |
+| [M4 #4](https://github.com/offflinerpsy/council-forge/issues/4) | Immutable bounded candidate admission and evidence advice; existing Jev remains advisory                                                        | Jev ranking in shadow mode, bounded revision, reproducible equal-budget comparisons; no accuracy/cost gain claim                                     |
+| [M5 #5](https://github.com/offflinerpsy/council-forge/issues/5) | Lint, platform CI matrix, review template, maintainer ownership and exact-head evidence                                                         | Running hosted CI, native platform pilots, independent controller review, retention/security hardening and any separately authorized release/hosting |
 
 ## Current milestone
 
@@ -39,6 +39,13 @@ Merge, release, deployment and directory submission require actual authority.
 The supplied-export adapters now normalize bounded URL Inspection and Search Analytics
 responses plus supplied source/rendered DOM observations through the existing evidence
 flow. Generic imports remain supported. See [M3 requirement-to-evidence matrix](SEO-EVIDENCE.md#requirement-to-evidence-matrix-for-existing-m3-3).
-The live GSC/browser collector integration, robots-aware crawler, SERP/schema requirements
+The live GSC/browser/crawler collector acceptance, SERP/schema requirements
 and broader evaluation remainder remain unverified/open. Public synthetic regressions are
 not a completed live collector or accuracy benchmark. M3 and AGR-45 remain open.
+
+## M3 bounded crawler implementation — 2026-10-08
+
+[Bounded traversal and receipt contract](BOUNDED-CRAWL.md) is implemented and tested with
+fake transports. Source links/redirects and conservative robots decisions remain distinct
+from user authority and provider indexation reports. No crawler/model pilot is part of
+this slice. Live collection and original M1–M5 acceptance remain open.

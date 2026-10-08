@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TypedObservationSchema } from './evidence-schema.ts';
+import { CrawlObservationSchema } from './crawl-schema.ts';
 export const Identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/);
 export const Mode = z.enum(['subscription_only', 'api_only', 'hybrid']);
 export const Role = z.enum([
@@ -117,7 +118,7 @@ export const EvidenceSchema = z
     observedAt: z.iso.datetime(),
     kind: EvidenceKind,
     excerpt: z.string().min(1).max(20000),
-    observation: TypedObservationSchema.optional(),
+    observation: z.union([TypedObservationSchema, CrawlObservationSchema]).optional(),
     provenance: z
       .object({
         collector: Identifier,

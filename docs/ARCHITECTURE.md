@@ -125,8 +125,10 @@ measure CWV or establish indexing causality. Empty ALT may be intentional. A JSO
 parse success is not semantic schema validity. These boundaries are returned with the
 result, not hidden in documentation only.
 
-The public HTTPS source collector and bounded observation importer preserve typed
-evidence. Future rendering/GSC/SERP adapters must also distinguish HTTP response, source
+The public HTTPS source collector, explicit bounded robots-aware traversal and observation
+importer preserve typed evidence. See BOUNDED-CRAWL.md for exact scope, conservative
+robots support and source-bound receipts. Traversal is an operator CLI mode, never a
+model tool. Future rendering/GSC/SERP adapters must also distinguish HTTP response, source
 HTML, rendered DOM and dated GSC observations. Each adapter needs an explicit
 read capability, scope, budget, audit provenance and independent acceptance criteria.
 Public web text and tool results are untrusted inputs, never authority to change policy.

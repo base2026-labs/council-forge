@@ -12,7 +12,24 @@ import { presetContracts } from './presets.ts';
 import { collectPublicPages, PublicPageScope } from './public-pages.ts';
 import { openGlobalCoordinator } from './global.ts';
 import { importEvidencePacket } from './collectors.ts';
+import { collectPublicCrawl, PublicCrawlScope } from './public-crawl.ts';
 const print = (v: unknown) => console.log(JSON.stringify(v, null, 2));
+function boundedJson(path: string) {
+  const fd = openSync(path, 'r');
+  try {
+    const bytes = Buffer.alloc(200001);
+    let length = 0,
+      n = 0;
+    do {
+      n = readSync(fd, bytes, length, bytes.length - length, null);
+      length += n;
+    } while (n > 0 && length < bytes.length);
+    if (length > 200000) fail('COLLECTION_LIMIT', 'Input file exceeds the 200000-byte bound.');
+    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length)));
+  } finally {
+    closeSync(fd);
+  }
+}
 async function main() {
   const argv = process.argv.slice(2);
   const flag = argv.indexOf('--language');
@@ -28,21 +45,7 @@ async function main() {
     return;
   }
   if (command === 'import-evidence' && path) {
-    const fd = openSync(path, 'r');
-    try {
-      const bytes = Buffer.alloc(200001);
-      let length = 0,
-        n = 0;
-      do {
-        n = readSync(fd, bytes, length, bytes.length - length, null);
-        length += n;
-      } while (n > 0 && length < bytes.length);
-      if (length > 200000) fail('COLLECTION_LIMIT', 'Import file exceeds the 200000-byte bound.');
-      const json = new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length));
-      print(importEvidencePacket(JSON.parse(json)));
-    } finally {
-      closeSync(fd);
-    }
+    print(importEvidencePacket(boundedJson(path)));
     return;
   }
   if (command === 'demo') {
@@ -88,6 +91,16 @@ async function main() {
     }
     return;
   }
+  if (command === 'crawl-public' && path) {
+    const scope = PublicCrawlScope.parse(boundedJson(path));
+    const global = openGlobalCoordinator();
+    try {
+      print(await collectPublicCrawl(scope, global, AbortSignal.timeout(scope.totalTimeoutMs)));
+    } finally {
+      global.close();
+    }
+    return;
+  }
   if (command === 'plan' && path) {
     const p = preflight(loadSettings(), requestFile());
     print({
@@ -124,6 +137,7 @@ async function main() {
       'inspect-html <file.html> <source-url>',
       'import-evidence <packet.json> (supplied exports or generic observations; no network/inference)',
       'collect-public <operator-scope.json> (bounded public HTTPS source GETs, no inference)',
+      'crawl-public <operator-crawl-scope.json> (explicit robots-aware bounded source traversal, no inference)',
     ],
     status: 'alpha; no live integrations are enabled by default',
   });

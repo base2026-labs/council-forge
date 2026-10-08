@@ -190,3 +190,14 @@ service or embedded-host acceptance. No provider/model pilot, GSC API/browser/SE
 paid call or historical UNKNOWN replay is part of this slice. Existing hosted CI is read
 accurately after the normal branch update, without manual rerun; local success is not
 hosted CI green. See [SEO evidence contract and M3 matrix](SEO-EVIDENCE.md).
+
+## Bounded crawler regressions — 2026-10-08
+
+The crawler continuation adds deterministic guarded fake-transport and fake DNS/HTTPS
+fixtures for robots refusal/unsupported matching, exact scope, page/robots redirects,
+cycles, every finite budget, source links/base/templates, UTF-8/status/content errors,
+request/total cancellation, shared leases and identity/provenance reimport. CLI/MCP
+imports retain ten tools, zero model capabilities and immutable configuration. All 221
+predecessor tests and the eight exact CF-E1/E2 assertions remain required. Local fake
+fixtures are not live crawl acceptance or an accuracy benchmark; exact-head counts and
+commands belong to the worker report, alongside hosted CI readback.

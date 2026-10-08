@@ -112,7 +112,7 @@ mandatory skeptic/verifier/chair and durable receipt/no-replay controls remain i
 | Provenance, limits and inert display                   | Exact scope/identity/payload checks, conflicting-provenance and byte/count/depth cases; VM Room test rejects HTML interpretation                                                                                    | Caller provenance is asserted; cryptographic provider authentication is not implemented                                                                                 |
 | GSC identifier and property boundaries                 | Shared `src/evidence-validation.ts` validator in raw adapters, typed reimport and preflight; guarded Domain/URL-prefix, concrete page row/filter and rebound-hash cases in `tests/seo-property-boundaries.test.mjs` | Deterministic consistency checks do not authenticate a supplied export or authorize live property access                                                                |
 | MCP/CLI/room and role contracts                        | Existing ten-tool import path, CLI import and room replacement; guarded `tests/seo-surfaces.test.mjs`, role/receipt/Unicode integration tests                                                                       | Embedded-host/live multilingual council acceptance remains separate                                                                                                     |
-| Robots-aware bounded crawler, redirects/internal links | Existing accepted `src/public-pages.ts` remains unchanged; existing source GET bounds/tests preserved                                                                                                               | Robots-aware traversal, crawl observations, redirect/link corpus and live resource-key acceptance remain backlog                                                        |
+| Robots-aware bounded crawler, redirects/internal links | Explicit `src/public-crawl.ts` mode, bounded `src/robots.ts`, pinned public transport and hashed request/page/link/redirect/robots receipts; guarded crawler/network/surface regressions                            | Live crawl and resource-key acceptance unverified; bounded parser is not full RFC conformance; browser/SERP/schema/evaluation remain open                               |
 | SERP and schema requirements                           | Explicit UNKNOWN eligibility/causality; supplied JSON-LD syntax/types only                                                                                                                                          | SERP provider adapter/pilot and current schema/eligibility evaluation remain backlog                                                                                    |
 | Public evaluation corpus and measurement               | Synthetic/non-client regression exports and adversarial source/provider fixtures                                                                                                                                    | Deterministic fixtures are not a benchmark of accuracy, error detection or causal inference; broader crawler/SERP/schema corpus and equal-budget evaluation remain open |
 
@@ -126,3 +126,13 @@ Reviewed 2026-10-08; mappings are deliberately bounded to substantiated fields:
 
 These public documentation reads are not live GSC API calls. Fixtures are independently
 constructed synthetic exports on example.com, not Google account or customer data.
+
+## Explicit bounded crawler continuation — 2026-10-08
+
+The operator-only [bounded crawl mode](BOUNDED-CRAWL.md) now supplies `public_crawl`
+observations through the existing generic packet/import/preflight/Room flow. It performs
+no automatic acquisition through MCP or a model. `collect-public` remains single-page;
+`crawl-public` requires explicit seeds, exact robots/page/redirect resources and every
+finite limit. No live crawl is claimed, and original UNKNOWN calls/live admission stay
+unchanged. Imported decisions retain capture time/expiry and asserted permission; they
+do not grant current access or establish ranking/indexation/schema eligibility.
