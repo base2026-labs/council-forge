@@ -12,6 +12,13 @@ import {
   Identifier,
 } from '../schema.ts';
 import type { Invocation, Completion, Provider } from '../provider.ts';
+import { ProviderResponseError } from '../provider.ts';
+import {
+  NativeReceiptSchema,
+  nativeIdentity,
+  nativeCount,
+  type NativeReceipt,
+} from '../native-receipt.ts';
 import { CouncilError, fail } from '../policy.ts';
 export const ISOLATION_CONFIG = {
   mcp_servers: {},
@@ -34,8 +41,13 @@ export const ISOLATION_CONFIG = {
   web_search: 'disabled',
   service_tier: 'default',
 };
+interface RequestHooks {
+  requested?: (id: number) => void;
+  dispatched?: () => void;
+  acknowledged?: (result: unknown) => void;
+}
 export interface Rpc {
-  request(method: string, params: unknown): Promise<unknown>;
+  request(method: string, params: unknown, hooks?: RequestHooks): Promise<unknown>;
   onEvent(fn: (method: string, params: unknown) => void): () => void;
   close(): void;
 }
@@ -44,7 +56,12 @@ export class StdioRpc implements Rpc {
   private sequence = 0;
   private pending = new Map<
     number,
-    { resolve: (v: unknown) => void; reject: (e: Error) => void; method: string }
+    {
+      resolve: (v: unknown) => void;
+      reject: (e: unknown) => void;
+      method: string;
+      hooks?: RequestHooks;
+    }
   >();
   private listeners = new Set<(method: string, params: unknown) => void>();
   private closed = false;
@@ -120,7 +137,16 @@ export class StdioRpc implements Rpc {
                   method: p?.method,
                 }),
               );
-            else p?.resolve(message.result);
+            else if (p) {
+              try {
+                // Persist the acknowledgement before later messages in this same chunk.
+                p.hooks?.acknowledged?.(message.result);
+                p.resolve(message.result);
+              } catch (error) {
+                p.reject(error);
+                this.close();
+              }
+            }
           } else if (message.method)
             for (const listener of this.listeners) listener(message.method, message.params);
         } catch {
@@ -135,13 +161,21 @@ export class StdioRpc implements Rpc {
     this.child.on('error', () => this.close());
     this.child.on('exit', () => this.close());
   }
-  request(method: string, params: unknown): Promise<unknown> {
+  request(method: string, params: unknown, hooks?: RequestHooks): Promise<unknown> {
     if (this.closed)
       return Promise.reject(new CouncilError('CODEX_CLOSED', 'Codex connection is closed.'));
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, method });
-      this.child.stdin.write(JSON.stringify({ method, id, params }) + '\n');
+      try {
+        hooks?.requested?.(id);
+        this.pending.set(id, { resolve, reject, method, hooks });
+        this.child.stdin.write(JSON.stringify({ method, id, params }) + '\n');
+        hooks?.dispatched?.();
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+        this.close();
+      }
     });
   }
   notify(method: string, params: unknown) {
@@ -238,19 +272,51 @@ export function nativeOutputSchema(phase: Invocation['phase']) {
 export class CodexLocalProvider implements Provider {
   constructor(private config: ProviderSettings) {}
   async complete(input: Invocation): Promise<Completion> {
-    if (!this.config.codexHome || !isAbsolute(this.config.codexHome))
-      return fail(
-        'ISOLATED_CODEX_HOME_REQUIRED',
-        'Configure an existing user-authenticated CODEX_HOME. Invocation-only isolation disables inherited integrations; never copy auth files.',
-      );
-    const home = await realpath(this.config.codexHome),
-      cwd = await mkdtemp(join(tmpdir(), 'council-forge-'));
-    let rpc = new StdioRpc(this.config.codexExecutable ?? 'codex', home, cwd, input.signal);
+    let native: NativeReceipt = {
+      state: 'requested',
+      boundary: 'invocation_requested',
+      requestedModel: nativeIdentity(input.agent.model),
+      requestedEffort: nativeIdentity(input.agent.effort),
+      actualModel: null,
+      actualEffort: null,
+      threadStartRequestId: null,
+      turnStartRequestId: null,
+      threadId: null,
+      turnId: null,
+      inferenceDispatched: false,
+      outcome: 'unknown',
+      errorCode: null,
+      usage: { inputTokens: null, outputTokens: null, costUsd: null },
+      usageEvidence: {
+        source: null,
+        cachedInputTokens: null,
+        reasoningOutputTokens: null,
+        totalTokens: null,
+      },
+    };
+    const emit = (
+      state: NativeReceipt['state'],
+      boundary: NativeReceipt['boundary'],
+      patch: Partial<NativeReceipt> = {},
+    ) => {
+      native = NativeReceiptSchema.parse({ ...native, ...patch, state, boundary });
+      input.onNativeReceipt?.(native);
+    };
+    let rpc!: StdioRpc;
+    let cwd: string | undefined;
     let disabledIntegrations: Record<string, false> = {};
-    let inferenceDispatched = false;
     let turnAccepted = false;
     let threadAttestation: unknown = null;
     try {
+      emit('requested', 'invocation_requested');
+      if (!this.config.codexHome || !isAbsolute(this.config.codexHome))
+        fail(
+          'ISOLATED_CODEX_HOME_REQUIRED',
+          'Configure an existing user-authenticated CODEX_HOME. Never copy auth files.',
+        );
+      const home = await realpath(this.config.codexHome!);
+      cwd = await mkdtemp(join(tmpdir(), 'council-forge-'));
+      rpc = new StdioRpc(this.config.codexExecutable ?? 'codex', home, cwd, input.signal);
       input.signal.throwIfAborted();
       const initialize = async () => {
         await rpc.request('initialize', {
@@ -342,17 +408,38 @@ export class CodexLocalProvider implements Provider {
           serviceTier: z.string().nullable().optional(),
         })
         .parse(
-          await rpc.request('thread/start', {
-            model: input.agent.model,
-            modelProvider: 'openai',
-            cwd,
-            sandbox: 'read-only',
-            approvalPolicy: 'never',
-            ephemeral: true,
-            serviceTier: 'default',
-            config: { ...ISOLATION_CONFIG, model_reasoning_effort: input.agent.effort },
-          }),
+          await rpc.request(
+            'thread/start',
+            {
+              model: input.agent.model,
+              modelProvider: 'openai',
+              cwd,
+              sandbox: 'read-only',
+              approvalPolicy: 'never',
+              ephemeral: true,
+              serviceTier: 'default',
+              config: { ...ISOLATION_CONFIG, model_reasoning_effort: input.agent.effort },
+            },
+            {
+              requested: (id) =>
+                emit('requested', 'thread_requested', { threadStartRequestId: id }),
+              acknowledged: (raw) => {
+                const out = raw as {
+                  thread?: { id?: unknown };
+                  model?: unknown;
+                  reasoningEffort?: unknown;
+                };
+                emit('requested', 'thread_acknowledged', {
+                  threadId: nativeIdentity(out?.thread?.id),
+                  actualModel: nativeIdentity(out?.model),
+                  actualEffort: nativeIdentity(out?.reasoningEffort),
+                });
+              },
+            },
+          ),
         );
+      if (!native.threadId)
+        fail('CODEX_THREAD_INVALID', 'Native thread identity was not returned.');
       const actual = started.model;
       if (actual !== input.agent.model)
         fail('MODEL_NOT_ATTESTED', 'App-server did not attest the selected model in thread/start.');
@@ -421,11 +508,28 @@ export class CodexLocalProvider implements Provider {
       };
       let text = '';
       let stop = () => {};
+      let terminalSeen = false;
+      let earlyBytes = 0;
+      const early: { method: string; params: Record<string, unknown> }[] = [];
+      let handle!: (method: string, p: Record<string, unknown>) => void;
       const completed = new Promise<void>((resolve, reject) => {
-        stop = rpc.onEvent((method, raw) => {
-          const p = (raw ?? {}) as Record<string, unknown>;
+        const rejectStream = (error: CouncilError) => {
+          emit(
+            native.inferenceDispatched ? 'unknown' : 'terminal',
+            error.code === 'CODEX_CLOSED' ? 'connection_lost' : 'rejected',
+            {
+              outcome: native.inferenceDispatched ? 'unknown' : 'not_dispatched',
+              errorCode: error.code,
+            },
+          );
+          terminalSeen = true;
+          reject(error);
+          rpc.close();
+        };
+        handle = (method, p) => {
+          if (terminalSeen) return;
           if (method === 'council/closed') {
-            reject(
+            rejectStream(
               new CouncilError(
                 'CODEX_CLOSED',
                 'Codex connection closed before completed inference.',
@@ -433,21 +537,86 @@ export class CodexLocalProvider implements Provider {
             );
             return;
           }
-          if (method === 'model/rerouted') {
-            reject(new CouncilError('MODEL_REROUTED', 'The service rerouted the requested model.'));
-            rpc.close();
+          if (method === 'account/updated') {
+            if (p.authMode !== 'chatgpt')
+              rejectStream(new CouncilError('AUTH_CHANGED', 'Authentication mode changed.'));
             return;
           }
-          if (method === 'account/updated' && p.authMode !== 'chatgpt') {
-            reject(new CouncilError('AUTH_CHANGED', 'Authentication mode changed.'));
-            rpc.close();
+          if (
+            ![
+              'item/completed',
+              'item/started',
+              'turn/started',
+              'turn/completed',
+              'model/rerouted',
+              'thread/tokenUsage/updated',
+              'error',
+            ].includes(method)
+          )
             return;
+          // A connection may deliver events for other turns. Missing identities are
+          // also uncorrelated; never use their output, usage, tools or terminal status.
+          if (p.threadId !== native.threadId) return;
+          const turn = p.turn as
+            | { id?: unknown; status?: unknown; error?: { codexErrorInfo?: unknown } }
+            | undefined;
+          const turnId = method.startsWith('turn/') ? turn?.id : p.turnId;
+          if (!native.turnId) {
+            earlyBytes += Buffer.byteLength(JSON.stringify(p));
+            if (early.length >= 128 || earlyBytes > 2097152) {
+              rejectStream(
+                new CouncilError(
+                  'CODEX_EVENT_OVERFLOW',
+                  'Too many events before the native acknowledgement.',
+                ),
+              );
+            } else early.push({ method, params: p });
+            return;
+          }
+          if (turnId !== native.turnId) return;
+          if (method === 'model/rerouted') {
+            rejectStream(
+              new CouncilError('MODEL_REROUTED', 'The service rerouted the requested model.'),
+            );
+            return;
+          }
+          if (method === 'error' && p.willRetry !== true) {
+            rejectStream(
+              new CouncilError(
+                'CODEX_STREAM_ERROR',
+                'Native stream reported an error; outcome remains uncertain.',
+              ),
+            );
+            return;
+          }
+          if (method === 'turn/started') emit('in_flight', 'turn_started');
+          if (method === 'thread/tokenUsage/updated') {
+            const last = (p.tokenUsage as { last?: Record<string, unknown> } | undefined)?.last;
+            if (last && typeof last === 'object') {
+              const count = (key: string) => nativeCount(last[key]);
+              const usage = {
+                inputTokens: count('inputTokens'),
+                outputTokens: count('outputTokens'),
+                costUsd: null,
+              };
+              const usageEvidence = {
+                source: 'thread/tokenUsage/updated:last' as const,
+                cachedInputTokens: count('cachedInputTokens'),
+                reasoningOutputTokens: count('reasoningOutputTokens'),
+                totalTokens: count('totalTokens'),
+              };
+              if (
+                JSON.stringify(usage) !== JSON.stringify(native.usage) ||
+                JSON.stringify(usageEvidence) !== JSON.stringify(native.usageEvidence)
+              )
+                emit('in_flight', 'usage_reported', { usage, usageEvidence });
+            }
           }
           if (method === 'item/completed') {
             const item = p.item as { type?: string; text?: string; phase?: string } | undefined;
             if (
               item?.type === 'agentMessage' &&
-              item.phase !== 'commentary' &&
+              (item.phase === 'final_answer' || item.phase === undefined || item.phase === null) &&
               typeof item.text === 'string'
             )
               text = item.text;
@@ -464,46 +633,70 @@ export class CodexLocalProvider implements Provider {
                 'webSearch',
               ].includes(item.type)
             ) {
-              reject(
+              rejectStream(
                 new CouncilError('UNEXPECTED_TOOL', 'A tool was requested by the local model.'),
               );
-              rpc.close();
               return;
             }
           }
           if (method === 'turn/completed') {
-            const turn = p.turn as
-              | { status?: string; error?: { codexErrorInfo?: unknown } }
-              | undefined;
+            if (!['completed', 'failed', 'interrupted'].includes(String(turn?.status))) {
+              rejectStream(
+                new CouncilError('CODEX_TERMINAL_INVALID', 'Native terminal status was not valid.'),
+              );
+              return;
+            }
+            // Persist at the notification boundary, before resolving or validating output.
+            emit('terminal', 'turn_completed', {
+              outcome: turn!.status as 'completed' | 'failed' | 'interrupted',
+              errorCode: turn!.status === 'completed' ? null : 'CODEX_INCOMPLETE',
+            });
+            terminalSeen = true;
             if (turn?.status === 'completed') resolve();
             else
               reject(
                 new CouncilError('CODEX_INCOMPLETE', 'Codex did not complete the turn.', {
-                  turnStatus: turn?.status ?? null,
+                  turnStatus: turn?.status,
                   codexErrorInfo: safeTurnError(turn?.error?.codexErrorInfo),
                 }),
               );
           }
-        });
+        };
+        stop = rpc.onEvent((method, raw) =>
+          handle(method, raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}),
+        );
       });
-      // Attach immediately so an early stream error cannot become an unhandled rejection.
+      // An early connection failure may occur while turn/start is still pending.
       void completed.catch(() => undefined);
       try {
-        inferenceDispatched = true;
-        await rpc.request('turn/start', {
-          threadId: started.thread.id,
-          input: [{ type: 'text', text: input.prompt }],
-          model: input.agent.model,
-          ...(input.agent.effort ? { effort: input.agent.effort } : {}),
-          approvalPolicy: 'never',
-          serviceTierForTurn: 'default',
-          sandboxPolicy: {
-            type: 'readOnly',
-            networkAccess: false,
+        await rpc.request(
+          'turn/start',
+          {
+            threadId: started.thread.id,
+            input: [{ type: 'text', text: input.prompt }],
+            model: input.agent.model,
+            ...(input.agent.effort ? { effort: input.agent.effort } : {}),
+            approvalPolicy: 'never',
+            serviceTierForTurn: 'default',
+            sandboxPolicy: { type: 'readOnly', networkAccess: false },
+            outputSchema: nativeOutputSchema(input.phase),
           },
-          outputSchema: nativeOutputSchema(input.phase),
-        });
-        turnAccepted = true;
+          {
+            requested: (id) => emit('requested', 'turn_requested', { turnStartRequestId: id }),
+            dispatched: () => emit('in_flight', 'turn_dispatched', { inferenceDispatched: true }),
+            acknowledged: (raw) => {
+              const turnId = nativeIdentity((raw as { turn?: { id?: unknown } })?.turn?.id);
+              // Retain the actual acknowledgement even when its identity is unusable.
+              emit('acknowledged', 'turn_acknowledged', { turnId });
+              turnAccepted = true;
+              if (!turnId)
+                fail('CODEX_ACK_INVALID', 'Native acknowledgement omitted a valid turn identity.');
+              emit('in_flight', 'awaiting_completion');
+              for (const event of early) handle(event.method, event.params);
+              early.length = 0;
+            },
+          },
+        );
         await completed;
       } finally {
         stop();
@@ -512,7 +705,8 @@ export class CodexLocalProvider implements Provider {
       return {
         text,
         actualModel: actual!,
-        requestId: started.thread.id,
+        requestId: null,
+        nativeReceipt: native,
         actualEffort: started.reasoningEffort,
         capabilityReceipt: {
           permissionScope: 'read_only',
@@ -525,21 +719,34 @@ export class CodexLocalProvider implements Provider {
           limitation:
             'Invocation-only feature flags and host sandbox are attested; semantic evidence checks remain fallible.',
         },
-        usage: { inputTokens: null, outputTokens: null, costUsd: null },
+        usage: native.usage,
       };
     } catch (error) {
-      if (error instanceof CouncilError)
-        error.diagnostic = {
-          ...error.diagnostic,
-          inferenceDispatched,
-          turnAccepted,
-          threadAttestation,
-          resultKnown: !inferenceDispatched,
-        };
-      throw error;
+      const code = error instanceof CouncilError ? error.code : 'PROVIDER_OR_SCHEMA_ERROR';
+      if (native.state !== 'terminal' && native.state !== 'unknown') {
+        emit(
+          native.inferenceDispatched ? 'unknown' : 'terminal',
+          code === 'CODEX_CLOSED' ? 'connection_lost' : 'rejected',
+          { outcome: native.inferenceDispatched ? 'unknown' : 'not_dispatched', errorCode: code },
+        );
+      }
+      const rejected = new ProviderResponseError(error, {
+        actualModel: native.actualModel,
+        requestId: null,
+        usage: native.usage,
+        nativeReceipt: native,
+      });
+      rejected.diagnostic = {
+        ...(error instanceof CouncilError ? error.diagnostic : {}),
+        inferenceDispatched: native.inferenceDispatched,
+        turnAccepted,
+        threadAttestation,
+        resultKnown: !native.inferenceDispatched,
+      };
+      throw rejected;
     } finally {
-      rpc.close();
-      await rm(cwd, { recursive: true, force: true });
+      rpc?.close();
+      if (cwd) await rm(cwd, { recursive: true, force: true });
     }
   }
 }

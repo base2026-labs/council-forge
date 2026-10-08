@@ -64,3 +64,16 @@ After a crash, confirm the old process exited before removing a stale runtime.lo
 Restart records interrupted/unknown results and never resumes inference. Keep UNKNOWN
 reservations; never delete state to conceal uncertain spend. The process-level isolation
 overrides do not alter the authenticated profile or authorize broader persistent access.
+
+## Offline native-receipt continuation — 2026-10-08
+
+Continue from independently accepted CF-R1/CF-R2 commit
+`c45e46922e96cff90abf1d756ba77625db13491c` in the same draft PR #6. Read
+[NATIVE-RECEIPTS.md](NATIVE-RECEIPTS.md) before interpreting new lifecycle events. Native
+RPC/thread/turn IDs are distinct from upstream billing IDs. Acknowledged or native-completed
+records do not by themselves establish an accepted council. Recovery keeps unfinished
+calls UNKNOWN and performs no replay; terminal evidence is retained separately from run
+acceptance. The additive table does not backfill historical identities. Existing original
+UNKNOWN outcomes and revoked live admission are preserved. This is a bounded offline
+engineering stage; all remaining live, native-host, multilingual, hosted-CI and backlog
+acceptance still belongs to the existing issue and controller review route.

@@ -63,11 +63,11 @@ createInterface({input:process.stdin}).on('line',line=>{
  case 'turn/start':
   if(q.params.model!=='fixture-sol'||q.params.effort!=='high'||q.params.sandboxPolicy.type!=='readOnly'||q.params.sandboxPolicy.networkAccess!==false||'access' in q.params.sandboxPolicy||q.params.approvalPolicy!=='never'||!q.params.outputSchema){send({id:q.id,error:{code:-32001}});break;}
   ok({turn:{id:'fixture-turn'}});
-  if(mode==='reroute'){send({method:'model/rerouted',params:{}});break;}
- if(mode==='incomplete'){send({method:'turn/completed',params:{turn:{status:'interrupted'}}});break;}
-  if(mode==='mutation-attempt'){send({method:'item/started',params:{item:{type:'mcpToolCall',server:'linear',tool:'create_issue'}}});break;}
-  send({method:'item/completed',params:{item:{type:'agentMessage',text:JSON.stringify({summary:'fixture',claims:[],objections:[]}),phase:'final_answer'}}});
-  send({method:'turn/completed',params:{turn:{status:'completed'}}});break;
+  if(mode==='reroute'){send({method:'model/rerouted',params:{threadId:'fixture-thread',turnId:'fixture-turn'}});break;}
+ if(mode==='incomplete'){send({method:'turn/completed',params:{threadId:'fixture-thread',turn:{id:'fixture-turn',status:'interrupted'}}});break;}
+  if(mode==='mutation-attempt'){send({method:'item/started',params:{threadId:'fixture-thread',turnId:'fixture-turn',item:{type:'mcpToolCall',server:'linear',tool:'create_issue'}}});break;}
+  send({method:'item/completed',params:{threadId:'fixture-thread',turnId:'fixture-turn',item:{type:'agentMessage',text:JSON.stringify({summary:'fixture',claims:[],objections:[]}),phase:'final_answer'}}});
+  send({method:'turn/completed',params:{threadId:'fixture-thread',turn:{id:'fixture-turn',status:'completed'}}});break;
  default:send({id:q.id,error:{code:-32601}});
  }
 });
@@ -112,7 +112,9 @@ test('Codex stdio fixture completes with pinned model and effort', unix, async (
     const result = await invoke('success');
     assert.equal(result.actualModel, 'fixture-sol');
     assert.equal(result.usage.costUsd, null);
-    assert.equal(result.requestId, 'fixture-thread');
+    assert.equal(result.requestId, null);
+    assert.equal(result.nativeReceipt.threadId, 'fixture-thread');
+    assert.equal(result.nativeReceipt.turnId, 'fixture-turn');
   } finally {
     delete process.env.COUNCIL_TEST_SENTINEL;
   }

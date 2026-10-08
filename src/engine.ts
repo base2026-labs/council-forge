@@ -315,11 +315,14 @@ export class CouncilEngine {
               evidence: r.evidence,
               claims,
               outputLanguage: r.outputLanguage,
+              onNativeReceipt: (receipt) =>
+                this.store.nativeReceipt(callId, r.runId, details, receipt),
             }),
           (result) => ({
             actualModel: result.actualModel,
             requestId: result.requestId,
             usage: result.usage,
+            ...(result.nativeReceipt ? { nativeReceipt: result.nativeReceipt } : {}),
             actualEffort: result.actualEffort ?? null,
             effortReceipt: result.actualEffort
               ? 'provider-attested'

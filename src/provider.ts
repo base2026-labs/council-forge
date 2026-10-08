@@ -1,5 +1,6 @@
 import type { Agent, Evidence, Claim } from './schema.ts';
 import { CouncilError } from './policy.ts';
+import type { NativeReceipt } from './native-receipt.ts';
 export type Phase = 'propose' | 'critique' | 'verify' | 'chair';
 export interface Invocation {
   agent: Agent;
@@ -10,6 +11,7 @@ export interface Invocation {
   evidence: Evidence[];
   claims: Claim[];
   outputLanguage?: string;
+  onNativeReceipt?: (receipt: NativeReceipt) => void;
 }
 export interface Completion {
   text: string;
@@ -17,12 +19,14 @@ export interface Completion {
   requestId: string | null;
   actualEffort?: string | null;
   capabilityReceipt?: unknown;
+  nativeReceipt?: NativeReceipt;
   usage: { inputTokens: number | null; outputTokens: number | null; costUsd: number | null };
 }
 export interface Provider {
   complete(input: Invocation): Promise<Completion>;
 }
 export interface ProviderReceipt {
+  nativeReceipt?: NativeReceipt;
   actualModel: string | null;
   requestId: string | null;
   usage: Completion['usage'];

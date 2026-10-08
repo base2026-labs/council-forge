@@ -69,8 +69,9 @@ after `turn/start` is sent remains uncertain and is never automatically replayed
 
 See VALIDATION.md for the current Linux subscription pilot. Paid provider pilots,
 quota exhaustion and native Windows/macOS behavior remain unverified. A schema
-change fails closed. Native Codex usage may not expose normalized token/cost receipts;
-those fields remain null. Output token limits are not claimed to be enforced on this route.
+change fails closed. Correlated native usage fields are retained when reported; missing
+fields and subscription cost remain null. Durable lifecycle/identity handling is described
+in [NATIVE-RECEIPTS.md](NATIVE-RECEIPTS.md). Output token limits are not claimed to be enforced on this route.
 
 The app-server route is for permitted local/open-source usage, **not a commercial or
 hosted service**. A hosted startup must implement the appropriate Sign in with ChatGPT

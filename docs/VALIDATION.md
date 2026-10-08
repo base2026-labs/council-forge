@@ -151,3 +151,22 @@ a live council, embedded-host acceptance, invoice verification, cross-platform e
 release or completed #1–#5 backlog. Existing subscription outcomes stay UNKNOWN until an
 authoritative receipt can be correlated to their preserved invocation identities; live
 admission remains revoked. The controller owns the next independent review.
+
+## Durable native receipts — offline continuation, 2026-10-08
+
+Accepted predecessor `c45e46922e96cff90abf1d756ba77625db13491c` has independent bounded
+CF-R1/CF-R2 PASS with 109 tests. This continuation adds synchronous sanitized native
+lifecycle receipts and exact JSON-RPC/thread/turn correlation. The first 15 regressions
+failed against that predecessor before source changes. Expanded executable fake-server
+coverage and process-kill/restart cases are detailed in [NATIVE-RECEIPTS.md](NATIVE-RECEIPTS.md).
+The worker records focused checks plus lint, typecheck, full tests, formatting and the
+explicit offline demo on the final exact candidate. Existing accounting/concurrency,
+role/language/read-only and idempotency tests remain required.
+
+Existing original UNKNOWN subscription records and available local service metadata were
+inspected read only. No correlated historical thread/turn/outcome/usage receipt was found;
+the stored results remain unchanged and live admission remains absent. The new schema
+cannot manufacture old identifiers. No live request, uncertain-operation replay, paid
+inference, plugin reinstall, manual CI rerun or account change accompanies this work.
+Hosted CI outcome must be read back separately; local checks do not establish hosted CI
+success. Independent review remains controller-owned, and #1–#5 remain open.
