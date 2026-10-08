@@ -50,7 +50,8 @@ accounting is explicit. Headers/TLS/DNS overhead are not included in body-byte t
 
 Primary specifications read on 2026-10-08:
 [RFC 9309](https://www.rfc-editor.org/rfc/rfc9309.html), sections 2.2–2.5 and 3;
-[RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html), response cache directives.
+[RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2), response cache directives;
+[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.3), HTTP whitespace.
 This is a **bounded, conservative dialect**, not full RFC conformance. Its response and
 parse ceiling is below RFC 9309's 500 KiB minimum. Explicit authority, smaller hop limits
 and unsupported semantics can HOLD earlier than the specification's general behavior.
@@ -98,6 +99,11 @@ Snapshots are invocation-local only; a new invocation acquires its own robots ev
 Their lifetime is bounded by `robotsMaxAgeMs`, supported `max-age`, conservative Age/Date
 assessment and Expires where max-age is absent. Supported cache directives are unqualified
 no-store/no-cache/private/public/must-revalidate/no-transform and one numeric max-age.
+Cache-Control member formatting removes only ASCII SP/HTAB. Non-ASCII octets (including
+NBSP), other controls and unsupported member syntax yield
+`ROBOTS_CACHE_POLICY_UNSUPPORTED` before any page allowance, including on 404/410 robots
+responses. Raw cache headers remain unchanged in the source request receipt; no Unicode
+trimming or control removal can convert them into an allowed directive or empty policy.
 Date/Expires support exact IMF-fixdate only; other timestamp forms HOLD. A response Date
 more than five minutes ahead of observation HOLDs. No-store/no-cache may inform the current fetched decision but cannot supply a reused
 allowance. Malformed/unknown directives and age/date/expiry values HOLD. Conditional GET,

@@ -119,8 +119,15 @@ function robotLifetime(
     reusable = true,
     hasMaxAge = false;
   let apparentAge = 0;
-  for (const raw of (response.cacheControl ?? '').split(',')) {
-    const part = raw.trim().toLowerCase();
+  const cacheControl = response.cacheControl ?? '';
+  // RFC 9110 OWS is SP/HTAB. Do not erase unsupported octets into an allowance.
+  if (/[^\t\x20-\x7e]/.test(cacheControl))
+    fail(
+      'ROBOTS_CACHE_POLICY_UNSUPPORTED',
+      'Only ASCII cache directives and SP/HTAB formatting are supported.',
+    );
+  for (const raw of cacheControl.split(',')) {
+    const part = raw.replace(/^[ \t]+|[ \t]+$/g, '').toLowerCase();
     if (!part) continue;
     if (/^max-age=[0-9]+$/.test(part) && !hasMaxAge) {
       hasMaxAge = true;
